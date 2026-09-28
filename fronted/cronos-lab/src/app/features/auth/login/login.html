@@ -1,0 +1,86 @@
+<div class="login-container">
+
+  <div class="left-panel">
+
+    <img
+      src="/tec-eb.jpeg"
+      alt="ITSE"
+      class="campus-image"
+    />
+
+    <div class="overlay">
+
+      <h2>
+        Excelencia académica,
+        innovación tecnológica y
+        compromiso con el futuro.
+      </h2>
+
+    </div>
+
+  </div>
+
+  <div class="right-panel">
+
+    <div class="login-card">
+
+      <img
+        src="/logo-chronoslab.png"
+        alt="Cronos Lab"
+        class="logo"
+      />
+
+      <form [formGroup]="form" (ngSubmit)="iniciarSesion()">
+
+        <div class="form-group">
+
+          <label>Correo</label>
+
+          <input
+            type="email"
+            formControlName="correo"
+            placeholder="Ingresa tu correo"
+          />
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Contraseña</label>
+
+          <input
+            type="password"
+            formControlName="password"
+            placeholder="Ingresa tu contraseña"
+          />
+
+        </div>
+
+        <button
+          type="submit"
+          class="btn-login"
+          [disabled]="loading"
+        >
+          {{ loading ? 'Ingresando...' : 'Iniciar sesión' }}
+        </button>
+
+      </form>
+
+      <div class="security-box">
+
+        Acceso exclusivo para personal autorizado del
+        Instituto Tecnológico Superior de Escárcega.
+
+      </div>
+
+      <div class="footer">
+
+        © 2026 CRONOS LAB - ITSE
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>

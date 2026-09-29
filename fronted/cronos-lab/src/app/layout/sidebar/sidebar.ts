@@ -1,7 +1,8 @@
 import { Component, inject } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
+import { Router } from '@angular/router';
+import { RouterModule } from '@angular/router';
 
-import Swal from 'sweetalert2';
+import { AuthService } from '../../features/auth/auth.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -12,39 +13,22 @@ import Swal from 'sweetalert2';
 })
 export class SidebarComponent {
 
+  private authService = inject(AuthService);
   private router = inject(Router);
 
-  cerrarSesion(): void {
+  nombre =
+    localStorage.getItem('nombre') ??
+    'Usuario';
 
-    Swal.fire({
-      title: 'Cerrar sesión',
-      text: '¿Deseas salir del sistema?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Sí, salir',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#dc3545'
-    }).then((result) => {
+  rol =
+    localStorage.getItem('rol') ??
+    '';
 
-      if (result.isConfirmed) {
+  logout(): void {
 
-        localStorage.removeItem('token');
+    this.authService.logout();
 
-        Swal.fire({
-          icon: 'success',
-          title: 'Sesión cerrada',
-          timer: 1000,
-          showConfirmButton: false
-        }).then(() => {
-
-          this.router.navigate(['/']);
-
-        });
-
-      }
-
-    });
-
+    this.router.navigate(['/']);
   }
 
 }

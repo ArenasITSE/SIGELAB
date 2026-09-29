@@ -74,37 +74,70 @@ export class LoginComponent {
     )
     .subscribe({
 
-      next: (response) => {
+     next: (response) => {
 
-        console.log('LOGIN OK');
-        console.log(response);
+  console.log('LOGIN OK');
+  console.log(response);
 
-        this.authService.guardarToken(
-          response.token
-        );
+  this.authService.guardarSesion(
+    response
+  );
 
-        localStorage.setItem(
-          'token',
-          response.token
-        );
+  this.loading = false;
 
-        this.loading = false;
+  Swal.fire({
+    icon: 'success',
+    title: 'Bienvenido',
+    text: `Hola ${response.nombre}`,
+    timer: 1200,
+    showConfirmButton: false
+  }).then(() => {
 
-        Swal.fire({
-          icon: 'success',
-          title: 'Bienvenido',
-          text: 'Acceso correcto',
-          timer: 1200,
-          showConfirmButton: false
-        }).then(() => {
+    switch (response.rol) {
 
-          this.router.navigate([
-            '/dashboard'
-          ]);
+      case 'ADMINISTRADOR':
 
-        });
+        this.router.navigate([
+          '/dashboard'
+        ]);
 
-      },
+        break;
+
+      case 'DOCENTE':
+
+        this.router.navigate([
+          '/dashboard-docente'
+        ]);
+
+        break;
+
+      case 'TECNICO':
+
+        this.router.navigate([
+          '/dashboard-tecnico'
+        ]);
+
+        break;
+
+      case 'COORDINADOR':
+
+        this.router.navigate([
+          '/dashboard-coordinador'
+        ]);
+
+        break;
+
+      default:
+
+        this.router.navigate([
+          '/'
+        ]);
+
+    }
+
+  });
+
+},
 
       error: (error) => {
 

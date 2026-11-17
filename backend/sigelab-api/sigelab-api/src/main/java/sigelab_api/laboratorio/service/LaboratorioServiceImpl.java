@@ -1,7 +1,10 @@
+
 package sigelab_api.laboratorio.service;
 
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import sigelab_api.carrera.entity.Carrera;
 import sigelab_api.carrera.repository.CarreraRepository;
@@ -19,53 +22,52 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class LaboratorioServiceImpl
-        implements LaboratorioService {
+@Transactional
+public class LaboratorioServiceImpl implements LaboratorioService {
 
     private final LaboratorioRepository laboratorioRepository;
     private final UsuarioRepository usuarioRepository;
     private final CarreraRepository carreraRepository;
 
+    // ==========================================
+    // REGISTRAR LABORATORIO
+    // ==========================================
+
     @Override
-    public LaboratorioResponse crear(
-            LaboratorioRequest request
-    ) {
+    public LaboratorioResponse crear(LaboratorioRequest request) {
 
-        Usuario encargado =
-                usuarioRepository.findById(
-                        request.encargadoId()
-                ).orElseThrow(
-                        () -> new RuntimeException(
-                                "Encargado no encontrado"
-                        )
-                );
+        Usuario encargado = usuarioRepository.findById(
+                request.encargadoId()
+        ).orElseThrow(() ->
+                new RuntimeException("Encargado no encontrado")
+        );
 
-        Carrera carrera =
-                carreraRepository.findById(
-                        request.carreraId()
-                ).orElseThrow(
-                        () -> new RuntimeException(
-                                "Carrera no encontrada"
-                        )
-                );
+        Carrera carrera = carreraRepository.findById(
+                request.carreraId()
+        ).orElseThrow(() ->
+                new RuntimeException("Carrera no encontrada")
+        );
 
-        Laboratorio laboratorio =
-                Laboratorio.builder()
-                        .nombre(request.nombre())
-                        .encargado(encargado)
-                        .carrera(carrera)
-                        .ubicacion(request.ubicacion())
-                        .capacidad(request.capacidad())
-                        .estatus(EstatusLaboratorio.DISPONIBLE)
-                        .build();
+        Laboratorio laboratorio = Laboratorio.builder()
+                .nombre(request.nombre())
+                .encargado(encargado)
+                .carrera(carrera)
+                .ubicacion(request.ubicacion())
+                .capacidad(request.capacidad())
+                .estatus(EstatusLaboratorio.DISPONIBLE)
+                .build();
 
-        laboratorio =
-                laboratorioRepository.save(laboratorio);
+        laboratorio = laboratorioRepository.save(laboratorio);
 
         return mapToResponse(laboratorio);
     }
 
+    // ==========================================
+    // LISTAR LABORATORIOS
+    // ==========================================
+
     @Override
+    @Transactional(readOnly = true)
     public List<LaboratorioResponse> listar() {
 
         return laboratorioRepository.findAll()
@@ -74,21 +76,25 @@ public class LaboratorioServiceImpl
                 .toList();
     }
 
-    @Override
-    public LaboratorioResponse buscarPorId(
-            Long id
-    ) {
+    // ==========================================
+    // BUSCAR LABORATORIO POR ID
+    // ==========================================
 
-        Laboratorio laboratorio =
-                laboratorioRepository.findById(id)
-                        .orElseThrow(
-                                () -> new RuntimeException(
-                                        "Laboratorio no encontrado"
-                                )
-                        );
+    @Override
+    @Transactional(readOnly = true)
+    public LaboratorioResponse buscarPorId(Long id) {
+
+        Laboratorio laboratorio = laboratorioRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Laboratorio no encontrado")
+                );
 
         return mapToResponse(laboratorio);
     }
+
+    // ==========================================
+    // ACTUALIZAR LABORATORIO
+    // ==========================================
 
     @Override
     public LaboratorioResponse actualizar(
@@ -96,31 +102,28 @@ public class LaboratorioServiceImpl
             LaboratorioRequest request
     ) {
 
-        Laboratorio laboratorio =
-                laboratorioRepository.findById(id)
-                        .orElseThrow(
-                                () -> new RuntimeException(
-                                        "Laboratorio no encontrado"
-                                )
-                        );
-
-        Usuario encargado =
-                usuarioRepository.findById(
-                        request.encargadoId()
-                ).orElseThrow(
-                        () -> new RuntimeException(
-                                "Encargado no encontrado"
-                        )
+        Laboratorio laboratorio = laboratorioRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Laboratorio no encontrado")
                 );
 
-        Carrera carrera =
-                carreraRepository.findById(
-                        request.carreraId()
-                ).orElseThrow(
-                        () -> new RuntimeException(
-                                "Carrera no encontrada"
-                        )
-                );
+        if (laboratorio.getEstatus() == EstatusLaboratorio.INACTIVO) {
+            throw new RuntimeException(
+                    "No se puede actualizar un laboratorio inactivo"
+            );
+        }
+
+        Usuario encargado = usuarioRepository.findById(
+                request.encargadoId()
+        ).orElseThrow(() ->
+                new RuntimeException("Encargado no encontrado")
+        );
+
+        Carrera carrera = carreraRepository.findById(
+                request.carreraId()
+        ).orElseThrow(() ->
+                new RuntimeException("Carrera no encontrada")
+        );
 
         laboratorio.setNombre(request.nombre());
         laboratorio.setEncargado(encargado);
@@ -128,31 +131,58 @@ public class LaboratorioServiceImpl
         laboratorio.setUbicacion(request.ubicacion());
         laboratorio.setCapacidad(request.capacidad());
 
-        laboratorio =
-                laboratorioRepository.save(laboratorio);
+        laboratorio = laboratorioRepository.save(laboratorio);
 
         return mapToResponse(laboratorio);
     }
 
+    // ==========================================
+    // DESACTIVAR LABORATORIO
+    // ==========================================
+
     @Override
-    public void eliminar(
-            Long id
-    ) {
+    public void eliminar(Long id) {
 
-        Laboratorio laboratorio =
-                laboratorioRepository.findById(id)
-                        .orElseThrow(
-                                () -> new RuntimeException(
-                                        "Laboratorio no encontrado"
-                                )
-                        );
+        Laboratorio laboratorio = laboratorioRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Laboratorio no encontrado")
+                );
 
-        laboratorio.setEstatus(
-                EstatusLaboratorio.INACTIVO
-        );
+        if (laboratorio.getEstatus() == EstatusLaboratorio.INACTIVO) {
+            throw new RuntimeException(
+                    "El laboratorio ya se encuentra inactivo"
+            );
+        }
+
+        laboratorio.setEstatus(EstatusLaboratorio.INACTIVO);
 
         laboratorioRepository.save(laboratorio);
     }
+
+    // ==========================================
+    // ELIMINAR DEFINITIVAMENTE
+    // ==========================================
+
+    @Override
+    public void eliminarDefinitivamente(Long id) {
+
+        Laboratorio laboratorio = laboratorioRepository.findById(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Laboratorio no encontrado")
+                );
+
+        if (laboratorio.getEstatus() != EstatusLaboratorio.INACTIVO) {
+            throw new RuntimeException(
+                    "Primero debes desactivar el laboratorio."
+            );
+        }
+
+        laboratorioRepository.delete(laboratorio);
+    }
+
+    // ==========================================
+    // MAPEAR ENTIDAD A RESPONSE
+    // ==========================================
 
     private LaboratorioResponse mapToResponse(
             Laboratorio laboratorio

@@ -25,11 +25,9 @@ export class LoginComponent {
 
   private fb = inject(FormBuilder);
 
-  private authService =
-    inject(AuthService);
+  private authService = inject(AuthService);
 
-  private router =
-    inject(Router);
+  private router = inject(Router);
 
   loading = false;
 
@@ -67,77 +65,75 @@ export class LoginComponent {
 
     this.loading = true;
 
-    console.log('REQUEST', this.form.getRawValue());
-
     this.authService.login(
       this.form.getRawValue() as any
     )
     .subscribe({
 
-     next: (response) => {
+      next: (response) => {
 
-  console.log('LOGIN OK');
-  console.log(response);
+        console.log('LOGIN OK');
+        console.log(response);
 
-  this.authService.guardarSesion(
-    response
-  );
+        this.authService.guardarSesion(
+          response
+        );
 
-  this.loading = false;
+        this.loading = false;
 
-  Swal.fire({
-    icon: 'success',
-    title: 'Bienvenido',
-    text: `Hola ${response.nombre}`,
-    timer: 1200,
-    showConfirmButton: false
-  }).then(() => {
+        Swal.fire({
+          icon: 'success',
+          title: 'Bienvenido',
+          text: `Hola ${response.nombre}`,
+          timer: 1200,
+          showConfirmButton: false
+        }).then(() => {
 
-    switch (response.rol) {
+          switch (response.rol) {
 
-      case 'ADMINISTRADOR':
+            case 'ADMINISTRADOR':
 
-        this.router.navigate([
-          '/dashboard'
-        ]);
+              this.router.navigate([
+                '/dashboard-admin'
+              ]);
 
-        break;
+              break;
 
-      case 'DOCENTE':
+            case 'DOCENTE':
 
-        this.router.navigate([
-          '/dashboard-docente'
-        ]);
+              this.router.navigate([
+                '/dashboard-docente'
+              ]);
 
-        break;
+              break;
 
-      case 'TECNICO':
+            case 'TECNICO':
 
-        this.router.navigate([
-          '/dashboard-tecnico'
-        ]);
+              this.router.navigate([
+                '/dashboard-tecnico'
+              ]);
 
-        break;
+              break;
 
-      case 'COORDINADOR':
+            case 'COORDINADOR':
 
-        this.router.navigate([
-          '/dashboard-coordinador'
-        ]);
+              this.router.navigate([
+                '/dashboard-coordinador'
+              ]);
 
-        break;
+              break;
 
-      default:
+            default:
 
-        this.router.navigate([
-          '/'
-        ]);
+              this.router.navigate([
+                '/'
+              ]);
 
-    }
+          }
 
-  });
+        });
 
-},
+      },
 
       error: (error) => {
 

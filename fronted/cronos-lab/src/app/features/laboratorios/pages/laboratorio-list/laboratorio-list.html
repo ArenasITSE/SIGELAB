@@ -1,0 +1,487 @@
+
+<div class="laboratorios-container">
+
+  <!-- ENCABEZADO -->
+  <div class="page-header">
+
+    <div>
+      <h1>Gestión de laboratorios</h1>
+      <p>
+        Administra los espacios y recursos de infraestructura académica.
+      </p>
+    </div>
+
+    <button
+      class="btn-primary"
+      type="button"
+      (click)="nuevoLaboratorio()">
+
+      <i class="fas fa-plus"></i>
+      Nuevo laboratorio
+
+    </button>
+
+  </div>
+
+  <!-- MENSAJES -->
+  @if (mensaje) {
+
+    <div
+      class="alert"
+      [class.success]="tipoMensaje === 'success'"
+      [class.error]="tipoMensaje === 'error'">
+
+      {{ mensaje }}
+
+      <button
+        type="button"
+        (click)="mensaje = ''">
+        ×
+      </button>
+
+    </div>
+
+  }
+
+  <!-- ESTADÍSTICAS -->
+  <div class="stats-grid">
+
+    <!-- TOTAL -->
+    <div class="stat-card">
+
+      <div class="stat-icon purple">
+        <i class="fas fa-flask"></i>
+      </div>
+
+      <div>
+        <span>Total de laboratorios</span>
+        <h2>{{ laboratorios.length }}</h2>
+      </div>
+
+    </div>
+
+    <!-- DISPONIBLES -->
+    <div class="stat-card">
+
+      <div class="stat-icon green">
+        <i class="fas fa-check-circle"></i>
+      </div>
+
+      <div>
+        <span>Disponibles</span>
+        <h2>{{ totalDisponibles }}</h2>
+      </div>
+
+    </div>
+
+    <!-- MANTENIMIENTO -->
+    <div class="stat-card">
+
+      <div class="stat-icon orange">
+        <i class="fas fa-tools"></i>
+      </div>
+
+      <div>
+        <span>En mantenimiento</span>
+        <h2>{{ totalMantenimiento }}</h2>
+      </div>
+
+    </div>
+
+    <!-- INACTIVOS -->
+    <div class="stat-card">
+
+      <div class="stat-icon red">
+        <i class="fas fa-ban"></i>
+      </div>
+
+      <div>
+        <span>Inactivos</span>
+        <h2>{{ totalInactivos }}</h2>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- FORMULARIO -->
+  @if (mostrarFormulario) {
+
+    <section class="form-card">
+
+      <div class="form-header">
+
+        <div>
+          <h2>
+            {{ editando ? 'Editar laboratorio' : 'Registrar laboratorio' }}
+          </h2>
+
+          <p>
+            Completa la información del laboratorio.
+          </p>
+        </div>
+
+        <button
+          class="btn-close"
+          type="button"
+          (click)="cancelarFormulario()">
+          ×
+        </button>
+
+      </div>
+
+      <form
+        #laboratorioForm="ngForm"
+        (ngSubmit)="guardarLaboratorio()">
+
+        <div class="form-grid">
+
+          <!-- NOMBRE -->
+          <div class="form-group">
+
+            <label>Nombre del laboratorio *</label>
+
+            <input
+              type="text"
+              name="nombre"
+              [(ngModel)]="formulario.nombre"
+              placeholder="Ej. Laboratorio de Cómputo 1"
+              required
+              maxlength="150"
+            />
+
+          </div>
+
+          <!-- UBICACIÓN -->
+          <div class="form-group">
+
+            <label>Ubicación *</label>
+
+            <input
+              type="text"
+              name="ubicacion"
+              [(ngModel)]="formulario.ubicacion"
+              placeholder="Ej. Edificio A, planta alta"
+              required
+            />
+
+          </div>
+
+          <!-- ENCARGADO -->
+
+<div class="form-group">
+  <label>Encargado *</label>
+
+  <select
+    name="encargadoId"
+    [(ngModel)]="formulario.encargadoId"
+    required
+    [disabled]="cargandoCatalogos">
+
+    <option [ngValue]="0" disabled>
+      {{ cargandoCatalogos
+        ? 'Cargando usuarios...'
+        : 'Selecciona un encargado' }}
+    </option>
+
+    @for (usuario of usuarios; track usuario.id) {
+      <option [ngValue]="usuario.id">
+        {{ usuario.nombre }} — {{ usuario.rol }}
+      </option>
+    }
+
+  </select>
+</div>
+
+
+          <!-- CARRERA -->
+  
+<div class="form-group">
+  <label>Carrera *</label>
+
+  <select
+    name="carreraId"
+    [(ngModel)]="formulario.carreraId"
+    required
+    [disabled]="cargandoCatalogos">
+
+    <option [ngValue]="0" disabled>
+      {{ cargandoCatalogos
+        ? 'Cargando carreras...'
+        : 'Selecciona una carrera' }}
+    </option>
+
+    @for (carrera of carreras; track carrera.id) {
+      <option [ngValue]="carrera.id">
+        {{ carrera.nombre }}
+      </option>
+    }
+
+  </select>
+</div>
+
+
+          <!-- CAPACIDAD -->
+          <div class="form-group">
+
+            <label>Capacidad *</label>
+
+            <input
+              type="number"
+              name="capacidad"
+              [(ngModel)]="formulario.capacidad"
+              min="1"
+              required
+            />
+
+          </div>
+
+        </div>
+
+        <!-- ACCIONES DEL FORMULARIO -->
+        <div class="form-actions">
+
+          <button
+            type="button"
+            class="btn-secondary"
+            [disabled]="guardando"
+            (click)="cancelarFormulario()">
+
+            Cancelar
+
+          </button>
+
+          <button
+            type="submit"
+            class="btn-primary"
+            [disabled]="guardando || laboratorioForm.invalid">
+
+            @if (guardando) {
+              <i class="fas fa-spinner fa-spin"></i>
+              Guardando...
+            } @else {
+              <i class="fas fa-save"></i>
+              {{ editando ? 'Actualizar laboratorio' : 'Guardar laboratorio' }}
+            }
+
+          </button>
+
+        </div>
+
+      </form>
+
+    </section>
+
+  }
+
+  <!-- TABLA DE LABORATORIOS -->
+  <section class="table-card">
+
+    <div class="table-header">
+
+      <div>
+        <h2>Laboratorios registrados</h2>
+        <p>
+          Consulta y administra los laboratorios institucionales.
+        </p>
+      </div>
+
+      <!-- BUSCADOR -->
+      <div class="search-box">
+
+        <i class="fas fa-search"></i>
+
+        <input
+          type="text"
+          [(ngModel)]="busqueda"
+          placeholder="Buscar laboratorio..."
+        />
+
+      </div>
+
+    </div>
+
+    <!-- CARGANDO -->
+    @if (cargando) {
+
+      <div class="loading">
+
+        <i class="fas fa-spinner fa-spin"></i>
+
+        Cargando laboratorios...
+
+      </div>
+
+    } @else {
+
+      <div class="table-responsive">
+
+        <table>
+
+          <thead>
+            <tr>
+              <th>Laboratorio</th>
+              <th>Carrera</th>
+              <th>Encargado</th>
+              <th>Ubicación</th>
+              <th>Capacidad</th>
+              <th>Estatus</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            @for (
+              laboratorio of laboratoriosFiltrados;
+              track laboratorio.id
+            ) {
+
+              <tr>
+
+                <!-- LABORATORIO -->
+                <td>
+
+                  <strong>{{ laboratorio.nombre }}</strong>
+
+                  <small class="subtext">
+                    ID: {{ laboratorio.id }}
+                  </small>
+
+                </td>
+
+                <!-- CARRERA -->
+                <td>
+                  {{ laboratorio.carrera }}
+                </td>
+
+                <!-- ENCARGADO -->
+                <td>
+                  {{ laboratorio.encargado }}
+                </td>
+
+                <!-- UBICACIÓN -->
+                <td>
+                  {{ laboratorio.ubicacion }}
+                </td>
+
+                <!-- CAPACIDAD -->
+                <td>
+
+                  <span class="capacity">
+                    {{ laboratorio.capacidad }} personas
+                  </span>
+
+                </td>
+
+                <!-- ESTATUS -->
+                <td>
+
+                  <span
+                    class="status"
+                    [class.available]="laboratorio.estatus === 'DISPONIBLE'"
+                    [class.maintenance]="laboratorio.estatus === 'MANTENIMIENTO'"
+                    [class.inactive]="laboratorio.estatus === 'INACTIVO'">
+
+                    {{ nombreEstatus(laboratorio.estatus) }}
+
+                  </span>
+
+                </td>
+
+                <!-- ACCIONES -->
+                <td>
+
+                  <div class="actions">
+
+                    @if (laboratorio.estatus !== 'INACTIVO') {
+
+                      <!-- EDITAR -->
+                      <button
+                        class="action-btn edit"
+                        type="button"
+                        title="Editar laboratorio"
+                        [disabled]="procesandoId !== null"
+                        (click)="editarLaboratorio(laboratorio)">
+
+                        <i class="fas fa-edit"></i>
+
+                      </button>
+
+                      <!-- DESACTIVAR -->
+                      <button
+                        class="action-btn delete"
+                        type="button"
+                        title="Desactivar laboratorio"
+                        [disabled]="procesandoId !== null"
+                        (click)="eliminarLaboratorio(laboratorio)">
+
+                        @if (procesandoId === laboratorio.id) {
+                          <i class="fas fa-spinner fa-spin"></i>
+                        } @else {
+                          <i class="fas fa-ban"></i>
+                        }
+
+                      </button>
+
+                    } @else {
+
+                      <!-- ELIMINAR DEFINITIVAMENTE -->
+                      <button
+                        class="action-btn delete"
+                        type="button"
+                        title="Eliminar definitivamente"
+                        [disabled]="procesandoId !== null"
+                        (click)="eliminarDefinitivamente(laboratorio)">
+
+                        @if (procesandoId === laboratorio.id) {
+                          <i class="fas fa-spinner fa-spin"></i>
+                        } @else {
+                          <i class="fas fa-trash"></i>
+                        }
+
+                      </button>
+
+                    }
+
+                  </div>
+
+                </td>
+
+              </tr>
+
+            } @empty {
+
+              <tr>
+
+                <td colspan="7" class="empty">
+
+                  <i class="fas fa-flask"></i>
+
+                  <p>No se encontraron laboratorios.</p>
+
+                </td>
+
+              </tr>
+
+            }
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    }
+
+    <!-- PIE DE TABLA -->
+    <div class="table-footer">
+
+      Mostrando {{ laboratoriosFiltrados.length }}
+      de {{ laboratorios.length }} laboratorios
+
+    </div>
+
+  </section>
+
+</div>

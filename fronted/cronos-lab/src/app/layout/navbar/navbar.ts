@@ -1,4 +1,6 @@
-import { Component } from '@angular/core';
+
+import { Component, inject } from '@angular/core';
+import { AuthService } from '../../features/auth/auth.service';
 
 @Component({
   selector: 'app-navbar',
@@ -8,4 +10,24 @@ import { Component } from '@angular/core';
 })
 export class NavbarComponent {
 
+  private authService = inject(AuthService);
+
+  get nombre(): string {
+    return this.authService.obtenerNombre() ?? 'Usuario';
+  }
+
+  get rol(): string {
+    return this.authService.obtenerRol() ?? '';
+  }
+
+  get tituloRol(): string {
+    const roles: Record<string, string> = {
+      ADMINISTRADOR: 'Administrador',
+      COORDINADOR: 'Coordinador',
+      DOCENTE: 'Docente',
+      TECNICO: 'Técnico'
+    };
+
+    return roles[this.rol] ?? 'Usuario';
+  }
 }

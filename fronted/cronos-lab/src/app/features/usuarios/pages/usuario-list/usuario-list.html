@@ -1,0 +1,669 @@
+
+<div class="usuarios-container">
+
+  <!-- ENCABEZADO -->
+  <div class="page-header">
+    <div>
+      <h1>Gestión de usuarios</h1>
+      <p>Administra las cuentas y permisos de acceso a SIGELAB.</p>
+    </div>
+
+    <button
+      class="btn-primary"
+      type="button"
+      (click)="nuevoUsuario()"
+      [disabled]="guardando || procesandoId !== null">
+
+      <i class="fas fa-plus"></i>
+      Nuevo usuario
+    </button>
+  </div>
+
+  <!-- MENSAJES -->
+  @if (mensaje) {
+    <div
+      class="alert-message"
+      [class.alert-success]="tipoMensaje === 'success'"
+      [class.alert-error]="tipoMensaje === 'error'">
+
+      <i
+        class="fas"
+        [class.fa-check-circle]="tipoMensaje === 'success'"
+        [class.fa-exclamation-circle]="tipoMensaje === 'error'">
+      </i>
+
+      {{ mensaje }}
+
+      <button
+        type="button"
+        class="close-message"
+        (click)="mensaje = ''">
+        &times;
+      </button>
+    </div>
+  }
+
+  <!-- CARGA MASIVA -->
+  <section class="content-card import-card">
+
+    <div class="card-header">
+      <div class="import-title">
+        <div class="import-icon">
+          <i class="fas fa-file-excel"></i>
+        </div>
+
+        <div>
+          <h3>Carga masiva de usuarios</h3>
+          <p>
+            Registra docentes y coordinadores mediante una plantilla Excel.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="import-content">
+
+      <div class="import-instructions">
+        <i class="fas fa-info-circle"></i>
+
+        <div>
+          <strong>Antes de importar</strong>
+          <p>
+            Verifica que el Excel tenga las columnas:
+            nombre completo, correo electrónico, fecha de nacimiento,
+            rol y carrera adscrita.
+          </p>
+        </div>
+      </div>
+
+      <div class="import-controls">
+
+        <div class="file-selector">
+
+          <input
+            #archivoExcel
+            id="archivoExcel"
+            type="file"
+            accept=".xlsx,.xls"
+            (change)="seleccionarArchivo($event)"
+            [disabled]="importando">
+
+          <label for="archivoExcel" class="file-label">
+            <i class="fas fa-folder-open"></i>
+            Seleccionar Excel
+          </label>
+
+          <span class="file-name">
+            {{ archivoSeleccionado?.name || 'Ningún archivo seleccionado' }}
+          </span>
+
+        </div>
+
+        <button
+          type="button"
+          class="btn-primary"
+          (click)="importarUsuarios()"
+          [disabled]="!archivoSeleccionado || importando">
+
+          @if (importando) {
+            <i class="fas fa-spinner fa-spin"></i>
+            Importando...
+          } @else {
+            <i class="fas fa-upload"></i>
+            Importar usuarios
+          }
+
+        </button>
+
+        <button
+          type="button"
+          class="btn-secondary"
+          *ngIf="archivoSeleccionado || resultadoImportacion"
+          (click)="limpiarImportacion(archivoExcel)"
+          [disabled]="importando">
+
+          <i class="fas fa-times"></i>
+          Limpiar
+        </button>
+
+      </div>
+
+      <div class="import-notes">
+        <span><i class="fas fa-file-excel"></i> Formatos .xlsx y .xls</span>
+        <span><i class="fas fa-weight-hanging"></i> Máximo 10 MB</span>
+        <span><i class="fas fa-user-shield"></i> Solo administradores</span>
+      </div>
+
+    </div>
+
+    <!-- RESULTADOS DE IMPORTACIÓN -->
+    @if (resultadoImportacion; as resultado) {
+
+      <div class="import-results">
+
+        <div class="results-heading">
+          <div>
+            <h4>Resultado de la importación</h4>
+            <p>Resumen del procesamiento del archivo.</p>
+          </div>
+
+          <span class="result-total">
+            {{ resultado.total }} registros
+          </span>
+        </div>
+
+        <div class="import-stats">
+
+          <div class="import-stat">
+            <span class="stat-number">
+              {{ resultado.total }}
+            </span>
+            <span class="stat-label">Total procesado</span>
+          </div>
+
+          <div class="import-stat success">
+            <span class="stat-number">
+              {{ resultado.exitosos }}
+            </span>
+            <span class="stat-label">Registrados</span>
+          </div>
+
+          <div class="import-stat error">
+            <span class="stat-number">
+              {{ resultado.rechazados }}
+            </span>
+            <span class="stat-label">Rechazados</span>
+          </div>
+
+        </div>
+
+        <div class="import-detail">
+
+          <h4>Detalle por fila</h4>
+
+          <div class="table-responsive">
+            <table class="users-table">
+
+              <thead>
+                <tr>
+                  <th>FILA</th>
+                  <th>CORREO</th>
+                  <th>ESTADO</th>
+                  <th>MENSAJE</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                @for (
+                  detalle of resultado.detalles;
+                  track detalle.fila
+                ) {
+                  <tr>
+                    <td>{{ detalle.fila }}</td>
+                    <td>{{ detalle.correo || 'Sin correo' }}</td>
+                    <td>
+                      <span
+                        class="status-badge"
+                        [class.status-active]="detalle.estado === 'EXITOSO'"
+                        [class.status-inactive]="detalle.estado === 'RECHAZADO'">
+                        {{ detalle.estado }}
+                      </span>
+                    </td>
+                    <td>{{ detalle.mensaje }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="4" class="empty-cell">
+                      No hay detalles para mostrar.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+
+            </table>
+          </div>
+
+        </div>
+
+      </div>
+    }
+
+  </section>
+
+  <!-- ESTADÍSTICAS -->
+  <div class="stats-grid">
+
+    <div class="stat-card">
+      <div class="stat-icon purple">
+        <i class="fas fa-users"></i>
+      </div>
+      <div>
+        <span>Total de usuarios</span>
+        <h2>{{ totalUsuarios }}</h2>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon green">
+        <i class="fas fa-user-check"></i>
+      </div>
+      <div>
+        <span>Usuarios activos</span>
+        <h2>{{ totalActivos }}</h2>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon orange">
+        <i class="fas fa-user-slash"></i>
+      </div>
+      <div>
+        <span>Usuarios inactivos</span>
+        <h2>{{ totalInactivos }}</h2>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon blue">
+        <i class="fas fa-user-shield"></i>
+      </div>
+      <div>
+        <span>Administradores</span>
+        <h2>{{ totalAdministradores }}</h2>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FORMULARIO -->
+  @if (mostrarFormulario) {
+
+    <section class="content-card form-card">
+
+      <div class="card-header">
+        <div>
+          <h3>
+            {{ editando ? 'Editar usuario' : 'Registrar usuario' }}
+          </h3>
+
+          <p>
+            {{
+              editando
+                ? 'Actualiza la información de la cuenta.'
+                : 'Completa la información para crear una cuenta.'
+            }}
+          </p>
+        </div>
+
+        <button
+          class="close-form"
+          type="button"
+          (click)="cancelarFormulario()"
+          [disabled]="guardando">
+          &times;
+        </button>
+      </div>
+
+      <form
+        #usuarioForm="ngForm"
+        (ngSubmit)="guardarUsuario()">
+
+        <div class="form-grid">
+
+          <!-- NOMBRE -->
+          <div class="form-group">
+            <label>Nombre completo *</label>
+
+            <input
+              type="text"
+              name="nombre"
+              [(ngModel)]="formulario.nombre"
+              placeholder="Ej. Juan Pérez"
+              required
+              maxlength="150"
+              [disabled]="guardando">
+          </div>
+
+          <!-- CORREO -->
+          <div class="form-group">
+            <label>Correo electrónico *</label>
+
+            <input
+              type="email"
+              name="correo"
+              [(ngModel)]="formulario.correo"
+              placeholder="usuario@institucion.edu.mx"
+              required
+              email
+              maxlength="150"
+              [disabled]="guardando">
+          </div>
+
+          <!-- CONTRASEÑA -->
+          <div class="form-group">
+            <label>
+              Contraseña
+
+              @if (!editando) {
+                *
+              } @else {
+                <span class="optional-label">(Opcional)</span>
+              }
+            </label>
+
+            <div class="password-wrapper">
+
+              <input
+                [type]="mostrarPassword ? 'text' : 'password'"
+                name="password"
+                [(ngModel)]="formulario.password"
+                [placeholder]="editando
+                  ? 'Dejar vacío para conservar la actual'
+                  : 'Ingresa una contraseña'"
+                [required]="!editando"
+                minlength="8"
+                autocomplete="new-password"
+                [disabled]="guardando">
+
+              <button
+                type="button"
+                class="password-toggle"
+                (click)="mostrarPassword = !mostrarPassword">
+
+                <i
+                  class="fas"
+                  [class.fa-eye]="!mostrarPassword"
+                  [class.fa-eye-slash]="mostrarPassword">
+                </i>
+
+              </button>
+
+            </div>
+
+            <small>
+              @if (editando) {
+                Solo ingresa una contraseña si deseas cambiarla.
+              } @else {
+                La contraseña debe tener al menos 8 caracteres.
+              }
+            </small>
+          </div>
+
+          <!-- ROL -->
+          <div class="form-group">
+            <label>Rol del usuario *</label>
+
+            <select
+              name="rol"
+              [(ngModel)]="formulario.rol"
+              required
+              [disabled]="guardando">
+
+              <option value="DOCENTE">Docente</option>
+              <option value="TECNICO">Técnico</option>
+              <option value="COORDINADOR">Coordinador</option>
+              <option value="ADMINISTRADOR">Administrador</option>
+
+            </select>
+
+            <small>
+              El rol determina los permisos de acceso al sistema.
+            </small>
+          </div>
+
+          <!-- CARRERA -->
+          <div class="form-group">
+            <label>Carrera *</label>
+
+            <select
+              name="carreraId"
+              [(ngModel)]="formulario.carreraId"
+              required
+              [disabled]="cargandoCarreras || guardando">
+
+              <option [ngValue]="null" disabled>
+                {{
+                  cargandoCarreras
+                    ? 'Cargando carreras...'
+                    : 'Selecciona una carrera'
+                }}
+              </option>
+
+              @for (carrera of carreras; track carrera.id) {
+                <option [ngValue]="carrera.id">
+                  {{ carrera.nombre }}
+                </option>
+              }
+
+            </select>
+
+            <small>
+              Selecciona la carrera a la que pertenece el usuario.
+            </small>
+
+            @if (!cargandoCarreras && carreras.length === 0) {
+              <small class="error-help">
+                No hay carreras disponibles.
+              </small>
+            }
+          </div>
+
+        </div>
+
+        <!-- BOTONES -->
+        <div class="form-actions">
+
+          <button
+            type="button"
+            class="btn-secondary"
+            (click)="cancelarFormulario()"
+            [disabled]="guardando">
+            Cancelar
+          </button>
+
+          <button
+            type="submit"
+            class="btn-primary"
+            [disabled]="
+              guardando ||
+              !usuarioForm.valid ||
+              formulario.carreraId === null ||
+              cargandoCarreras
+            ">
+
+            @if (guardando) {
+              <i class="fas fa-spinner fa-spin"></i>
+              Guardando...
+            } @else {
+              <i class="fas fa-save"></i>
+              {{ editando ? 'Guardar cambios' : 'Crear usuario' }}
+            }
+
+          </button>
+
+        </div>
+
+      </form>
+
+    </section>
+  }
+
+  <!-- TABLA DE USUARIOS -->
+  <section class="content-card">
+
+    <div class="card-header table-header">
+
+      <div>
+        <h3>Usuarios registrados</h3>
+        <p>Consulta y administra las cuentas institucionales.</p>
+      </div>
+
+      <div class="filters">
+
+        <input
+          type="search"
+          [(ngModel)]="busqueda"
+          placeholder="Buscar usuario..."
+          class="search-input">
+
+        <select
+          [(ngModel)]="filtroRol"
+          class="filter-select">
+
+          <option value="">Todos los roles</option>
+          <option value="ADMINISTRADOR">Administrador</option>
+          <option value="COORDINADOR">Coordinador</option>
+          <option value="TECNICO">Técnico</option>
+          <option value="DOCENTE">Docente</option>
+
+        </select>
+
+      </div>
+    </div>
+
+    <div class="table-responsive">
+
+      <table class="users-table">
+
+        <thead>
+          <tr>
+            <th>USUARIO</th>
+            <th>CORREO ELECTRÓNICO</th>
+            <th>CARRERA</th>
+            <th>ROL</th>
+            <th>ESTADO</th>
+            <th>ACCIONES</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          @if (cargando) {
+
+            <tr>
+              <td colspan="6" class="loading-cell">
+                <i class="fas fa-spinner fa-spin"></i>
+                Cargando usuarios...
+              </td>
+            </tr>
+
+          } @else {
+
+            @for (
+              usuario of usuariosFiltrados;
+              track usuario.id
+            ) {
+
+              <tr>
+
+                <!-- USUARIO -->
+                <td>
+                  <div class="user-info">
+
+                    <div class="user-avatar">
+                      {{ usuario.nombre.charAt(0).toUpperCase() }}
+                    </div>
+
+                    <div>
+                      <strong>{{ usuario.nombre }}</strong>
+                      <small>ID: {{ usuario.id }}</small>
+                    </div>
+
+                  </div>
+                </td>
+
+                <!-- CORREO -->
+                <td>{{ usuario.correo }}</td>
+
+                <!-- CARRERA -->
+                <td>
+                  <span class="career-name">
+                    {{ usuario.carrera || 'Sin carrera asignada' }}
+                  </span>
+                </td>
+
+                <!-- ROL -->
+                <td>
+                  <span
+                    class="role-badge"
+                    [ngClass]="'role-' + usuario.rol.toLowerCase()">
+                    {{ nombreRol(usuario.rol) }}
+                  </span>
+                </td>
+
+                <!-- ESTADO -->
+                <td>
+                  <span
+                    class="status-badge"
+                    [class.status-active]="usuario.activo"
+                    [class.status-inactive]="!usuario.activo">
+                    {{ usuario.activo ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+
+                <!-- ACCIONES -->
+                <td>
+                  <div class="actions">
+
+                    <button
+                      type="button"
+                      class="action-btn edit"
+                      title="Editar usuario"
+                      (click)="editarUsuario(usuario)"
+                      [disabled]="procesandoId !== null || guardando">
+
+                      <i class="fas fa-pen"></i>
+                    </button>
+
+                    @if (usuario.activo) {
+
+                      <button
+                        type="button"
+                        class="action-btn deactivate"
+                        title="Desactivar usuario"
+                        (click)="desactivarUsuario(usuario)"
+                        [disabled]="procesandoId !== null || guardando">
+
+                        @if (procesandoId === usuario.id) {
+                          <i class="fas fa-spinner fa-spin"></i>
+                        } @else {
+                          <i class="fas fa-user-slash"></i>
+                        }
+
+                      </button>
+
+                    }
+
+                  </div>
+                </td>
+
+              </tr>
+
+            } @empty {
+
+              <tr>
+                <td colspan="6" class="empty-cell">
+                  <i class="fas fa-users"></i>
+                  <strong>No se encontraron usuarios</strong>
+                  <span>Prueba con otro término de búsqueda.</span>
+                </td>
+              </tr>
+
+            }
+
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <div class="table-footer">
+      Mostrando {{ usuariosFiltrados.length }}
+      de {{ usuarios.length }} usuarios
+    </div>
+
+  </section>
+
+</div>

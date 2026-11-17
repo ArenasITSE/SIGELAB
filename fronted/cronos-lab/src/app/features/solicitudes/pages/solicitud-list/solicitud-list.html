@@ -1,0 +1,570 @@
+
+<div class="solicitudes-container">
+
+  <!-- ENCABEZADO -->
+  <div class="page-header">
+    <div>
+      <h1>Gestión de solicitudes</h1>
+      <p>Administra las solicitudes de uso de laboratorios institucionales.</p>
+    </div>
+
+    @if (puedeCrear) {
+      <button
+        class="btn-primary"
+        type="button"
+        (click)="nuevaSolicitud()"
+        [disabled]="guardando || procesandoId !== null">
+
+        <i class="fas fa-plus"></i>
+        Nueva solicitud
+      </button>
+    }
+  </div>
+
+  <!-- MENSAJES -->
+  @if (mensaje) {
+    <div
+      class="alert-message"
+      [class.alert-success]="tipoMensaje === 'success'"
+      [class.alert-error]="tipoMensaje === 'error'">
+
+      <i
+        class="fas"
+        [class.fa-check-circle]="tipoMensaje === 'success'"
+        [class.fa-exclamation-circle]="tipoMensaje === 'error'">
+      </i>
+
+      {{ mensaje }}
+
+      <button
+        type="button"
+        class="close-message"
+        (click)="mensaje = ''">
+        &times;
+      </button>
+    </div>
+  }
+
+  <!-- ESTADÍSTICAS -->
+  <div class="stats-grid">
+
+    <div class="stat-card">
+      <div class="stat-icon purple">
+        <i class="fas fa-file-alt"></i>
+      </div>
+      <div>
+        <span>Total de solicitudes</span>
+        <h2>{{ totalSolicitudes }}</h2>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon orange">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div>
+        <span>Pendientes</span>
+        <h2>{{ totalPendientes }}</h2>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon green">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <div>
+        <span>Autorizadas</span>
+        <h2>{{ totalAutorizadas }}</h2>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon red">
+        <i class="fas fa-times-circle"></i>
+      </div>
+      <div>
+        <span>Rechazadas</span>
+        <h2>{{ totalRechazadas }}</h2>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FORMULARIO DE SOLICITUD -->
+  @if (mostrarFormulario) {
+
+    <section class="content-card form-card">
+
+      <div class="card-header">
+        <div>
+          <h3>Registrar solicitud</h3>
+          <p>Completa los datos para solicitar el uso de un laboratorio.</p>
+        </div>
+
+        <button
+          type="button"
+          class="close-form"
+          (click)="cancelarFormulario()"
+          [disabled]="guardando">
+          &times;
+        </button>
+      </div>
+
+      <form
+        #solicitudForm="ngForm"
+        (ngSubmit)="guardarSolicitud()">
+
+        <div class="form-grid">
+
+          <!-- LABORATORIO -->
+          <div class="form-group full-width">
+            <label>Laboratorio *</label>
+
+            <select
+              name="laboratorioId"
+              [(ngModel)]="formulario.laboratorioId"
+              required
+              [disabled]="cargandoLaboratorios || guardando">
+
+              <option [ngValue]="0" disabled>
+                {{
+                  cargandoLaboratorios
+                    ? 'Cargando laboratorios...'
+                    : 'Selecciona un laboratorio'
+                }}
+              </option>
+
+              @for (
+                laboratorio of laboratorios;
+                track laboratorio.id
+              ) {
+                <option [ngValue]="laboratorio.id">
+                  {{ laboratorio.nombre }}
+                  — {{ laboratorio.carrera }}
+                  — Capacidad: {{ laboratorio.capacidad }}
+                </option>
+              }
+
+            </select>
+
+            @if (laboratorioSeleccionado) {
+              <small>
+                Capacidad máxima:
+                {{ laboratorioSeleccionado.capacidad }} personas
+              </small>
+            }
+          </div>
+
+          <!-- FECHA -->
+          <div class="form-group">
+            <label>Fecha de uso *</label>
+
+            <input
+              type="date"
+              name="fecha"
+              [(ngModel)]="formulario.fecha"
+              [min]="fechaMinima"
+              required
+              [disabled]="guardando">
+          </div>
+
+          <!-- PERSONAS -->
+          <div class="form-group">
+            <label>Número de personas *</label>
+
+            <input
+              type="number"
+              name="numeroPersonas"
+              [(ngModel)]="formulario.numeroPersonas"
+              min="1"
+              [max]="laboratorioSeleccionado?.capacidad ?? 999"
+              required
+              [disabled]="guardando">
+
+            @if (laboratorioSeleccionado) {
+              <small>
+                Máximo {{ laboratorioSeleccionado.capacidad }} personas.
+              </small>
+            }
+          </div>
+
+          <!-- HORA INICIO -->
+          <div class="form-group">
+            <label>Hora de inicio *</label>
+
+            <input
+              type="time"
+              name="horaInicio"
+              [(ngModel)]="formulario.horaInicio"
+              required
+              [disabled]="guardando">
+          </div>
+
+          <!-- HORA FIN -->
+          <div class="form-group">
+            <label>Hora de finalización *</label>
+
+            <input
+              type="time"
+              name="horaFin"
+              [(ngModel)]="formulario.horaFin"
+              required
+              [disabled]="guardando">
+
+            @if (
+              formulario.horaInicio &&
+              formulario.horaFin &&
+              !horarioValido
+            ) {
+              <small class="error-help">
+                La hora final debe ser posterior a la inicial.
+              </small>
+            }
+          </div>
+
+          <!-- MOTIVO -->
+          <div class="form-group full-width">
+            <label>Motivo de la solicitud *</label>
+
+            <textarea
+              name="motivo"
+              [(ngModel)]="formulario.motivo"
+              placeholder="Describe la actividad académica que realizarás..."
+              rows="4"
+              maxlength="1000"
+              required
+              [disabled]="guardando">
+            </textarea>
+
+            <small>
+              Describe brevemente la práctica o actividad que realizarás.
+            </small>
+          </div>
+
+        </div>
+
+        <!-- ACCIONES -->
+        <div class="form-actions">
+
+          <button
+            type="button"
+            class="btn-secondary"
+            (click)="cancelarFormulario()"
+            [disabled]="guardando">
+            Cancelar
+          </button>
+
+          <button
+            type="submit"
+            class="btn-primary"
+            [disabled]="
+              guardando ||
+              !solicitudForm.valid ||
+              !horarioValido ||
+              !formulario.laboratorioId
+            ">
+
+            @if (guardando) {
+              <i class="fas fa-spinner fa-spin"></i>
+              Enviando...
+            } @else {
+              <i class="fas fa-paper-plane"></i>
+              Enviar solicitud
+            }
+
+          </button>
+
+        </div>
+
+      </form>
+
+    </section>
+  }
+
+  <!-- FORMULARIO DE RECHAZO -->
+  @if (mostrarRechazo && solicitudSeleccionada) {
+
+    <section class="content-card rejection-card">
+
+      <div class="card-header">
+        <div>
+          <h3>Rechazar solicitud</h3>
+          <p>
+            Solicitud de {{ solicitudSeleccionada.solicitante }}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          class="close-form"
+          (click)="cancelarRechazo()">
+          &times;
+        </button>
+      </div>
+
+      <div class="rejection-content">
+
+        <div class="request-summary">
+          <strong>{{ solicitudSeleccionada.laboratorio }}</strong>
+
+          <span>
+            {{ solicitudSeleccionada.fecha }}
+            ·
+            {{ solicitudSeleccionada.horaInicio }}
+            - {{ solicitudSeleccionada.horaFin }}
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label>Motivo del rechazo *</label>
+
+          <textarea
+            [(ngModel)]="observacionesRechazo"
+            placeholder="Explica por qué se rechaza la solicitud..."
+            rows="4"
+            maxlength="1000">
+          </textarea>
+        </div>
+
+        <div class="form-actions rejection-actions">
+
+          <button
+            type="button"
+            class="btn-secondary"
+            (click)="cancelarRechazo()"
+            [disabled]="procesandoId !== null">
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            class="btn-danger"
+            (click)="rechazarSolicitud()"
+            [disabled]="
+              !observacionesRechazo.trim() ||
+              procesandoId !== null
+            ">
+
+            @if (procesandoId !== null) {
+              <i class="fas fa-spinner fa-spin"></i>
+              Procesando...
+            } @else {
+              <i class="fas fa-times"></i>
+              Confirmar rechazo
+            }
+
+          </button>
+
+        </div>
+
+      </div>
+
+    </section>
+  }
+
+  <!-- TABLA -->
+  <section class="content-card">
+
+    <div class="card-header table-header">
+
+      <div>
+        <h3>Solicitudes registradas</h3>
+        <p>Consulta el estado y la información de las solicitudes.</p>
+      </div>
+
+      <div class="filters">
+
+        <input
+          type="search"
+          [(ngModel)]="busqueda"
+          placeholder="Buscar solicitud..."
+          class="search-input">
+
+        <select
+          [(ngModel)]="filtroEstatus"
+          class="filter-select">
+
+          <option value="">Todos los estados</option>
+          <option value="PENDIENTE">Pendientes</option>
+          <option value="AUTORIZADA">Autorizadas</option>
+          <option value="RECHAZADA">Rechazadas</option>
+
+        </select>
+
+        <input
+          type="date"
+          [(ngModel)]="filtroFecha"
+          class="date-filter">
+
+      </div>
+
+    </div>
+
+    <div class="table-responsive">
+
+      <table class="requests-table">
+
+        <thead>
+          <tr>
+            <th>SOLICITANTE</th>
+            <th>LABORATORIO</th>
+            <th>CARRERA</th>
+            <th>FECHA</th>
+            <th>HORARIO</th>
+            <th>PERSONAS</th>
+            <th>ESTADO</th>
+            <th>ACCIONES</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          @if (cargando) {
+
+            <tr>
+              <td colspan="8" class="loading-cell">
+                <i class="fas fa-spinner fa-spin"></i>
+                Cargando solicitudes...
+              </td>
+            </tr>
+
+          } @else {
+
+            @for (
+              solicitud of solicitudesFiltradas;
+              track solicitud.id
+            ) {
+
+              <tr>
+
+                <!-- SOLICITANTE -->
+                <td>
+                  <div class="request-user">
+                    <strong>{{ solicitud.solicitante }}</strong>
+                    <small>ID: {{ solicitud.id }}</small>
+                  </div>
+                </td>
+
+                <!-- LABORATORIO -->
+                <td>
+                  <strong class="laboratory-name">
+                    {{ solicitud.laboratorio }}
+                  </strong>
+                </td>
+
+                <!-- CARRERA -->
+                <td>
+                  {{ solicitud.carrera }}
+                </td>
+
+                <!-- FECHA -->
+                <td>
+                  {{ solicitud.fecha | date:'dd/MM/yyyy' }}
+                </td>
+
+                <!-- HORARIO -->
+                <td>
+                  <span class="time-label">
+                    <i class="far fa-clock"></i>
+                    {{ solicitud.horaInicio }}
+                    -
+                    {{ solicitud.horaFin }}
+                  </span>
+                </td>
+
+                <!-- PERSONAS -->
+                <td>
+                  <span class="people-label">
+                    {{ solicitud.numeroPersonas }} personas
+                  </span>
+                </td>
+
+                <!-- ESTADO -->
+                <td>
+                  <span
+                    class="status-badge"
+                    [ngClass]="'status-' + solicitud.estatus.toLowerCase()">
+
+                    {{ nombreEstatus(solicitud.estatus) }}
+
+                  </span>
+                </td>
+
+                <!-- ACCIONES -->
+                <td>
+
+                  @if (
+                    puedeGestionar &&
+                    solicitud.estatus === 'PENDIENTE'
+                  ) {
+
+                    <div class="actions">
+
+                      <button
+                        type="button"
+                        class="action-btn authorize"
+                        title="Autorizar solicitud"
+                        (click)="autorizarSolicitud(solicitud)"
+                        [disabled]="procesandoId !== null">
+
+                        @if (procesandoId === solicitud.id) {
+                          <i class="fas fa-spinner fa-spin"></i>
+                        } @else {
+                          <i class="fas fa-check"></i>
+                        }
+
+                      </button>
+
+                      <button
+                        type="button"
+                        class="action-btn reject"
+                        title="Rechazar solicitud"
+                        (click)="abrirRechazo(solicitud)"
+                        [disabled]="procesandoId !== null">
+
+                        <i class="fas fa-times"></i>
+
+                      </button>
+
+                    </div>
+
+                  } @else {
+
+                    <span class="no-actions">
+                      Sin acciones
+                    </span>
+
+                  }
+
+                </td>
+
+              </tr>
+
+            } @empty {
+
+              <tr>
+                <td colspan="8" class="empty-cell">
+                  <i class="fas fa-inbox"></i>
+                  <strong>No se encontraron solicitudes</strong>
+                  <span>Prueba cambiando los filtros de búsqueda.</span>
+                </td>
+              </tr>
+
+            }
+
+          }
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <div class="table-footer">
+      Mostrando {{ solicitudesFiltradas.length }}
+      de {{ solicitudes.length }} solicitudes
+    </div>
+
+  </section>
+
+</div>

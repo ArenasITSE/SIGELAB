@@ -1,15 +1,17 @@
+
 package sigelab_api.security.config;
+
+import jakarta.servlet.DispatcherType;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -29,37 +31,48 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http
-    ) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
 
         http
-                .cors(cors -> {})
-                .csrf(csrf -> csrf.disable())
+            // Configuración CORS
+            .cors(cors -> {})
 
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS
-                        )
+            // Deshabilitar CSRF para API REST con JWT
+            .csrf(AbstractHttpConfigurer::disable)
+
+            // Aplicación sin sesiones HTTP
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(
+                    SessionCreationPolicy.STATELESS
                 )
+            )
 
-                .authorizeHttpRequests(auth -> auth
+            // Reglas de autorización
+            .authorizeHttpRequests(auth -> auth
 
-                        .requestMatchers(
-                                "/api/auth/**"
-                        )
-                        .permitAll()
+                // Permitir despachos internos de error
+                .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
 
-                        .anyRequest()
-                        .authenticated()
-                )
+                // Permitir autenticación
+                .requestMatchers(
+                    "/api/auth/**",
+                    "/error"
+                ).permitAll()
 
-                .addFilterBefore(
-                        jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                )
+                // El resto requiere autenticación JWT
+                .anyRequest().authenticated()
+            )
 
-                .httpBasic(Customizer.withDefaults());
+            // Deshabilitar HTTP Basic y formulario
+            .httpBasic(AbstractHttpConfigurer::disable)
+            .formLogin(AbstractHttpConfigurer::disable)
+
+            // Integrar filtro JWT
+            .addFilterBefore(
+                jwtAuthenticationFilter,
+                UsernamePasswordAuthenticationFilter.class
+            );
 
         return http.build();
     }
@@ -67,40 +80,35 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
 
-        CorsConfiguration configuration =
-                new CorsConfiguration();
+        CorsConfiguration configuration = new CorsConfiguration();
 
         configuration.setAllowedOrigins(
-                List.of(
-                        "http://localhost:4200"
-                )
+            List.of("http://localhost:4200")
         );
 
         configuration.setAllowedMethods(
-                List.of(
-                        "GET",
-                        "POST",
-                        "PUT",
-                        "DELETE",
-                        "PATCH",
-                        "OPTIONS"
-                )
+            List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "PATCH",
+                "OPTIONS"
+            )
         );
 
         configuration.setAllowedHeaders(
-                List.of("*")
+            List.of("*")
         );
 
-        configuration.setAllowCredentials(
-                true
-        );
+        configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
+            new UrlBasedCorsConfigurationSource();
 
         source.registerCorsConfiguration(
-                "/**",
-                configuration
+            "/**",
+            configuration
         );
 
         return source;

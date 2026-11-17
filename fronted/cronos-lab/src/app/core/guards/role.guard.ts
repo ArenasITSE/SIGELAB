@@ -1,3 +1,4 @@
+
 import { inject } from '@angular/core';
 
 import {
@@ -13,21 +14,22 @@ export const roleGuard: CanActivateFn = (
 ) => {
 
   const authService = inject(AuthService);
-
   const router = inject(Router);
 
-  const expectedRole =
-    route.data['role'];
+  // Compatibilidad con un rol o varios roles
+  const expectedRoles: string[] =
+    route.data['roles'] ??
+    (route.data['role'] ? [route.data['role']] : []);
 
-  const currentRole =
-    authService.obtenerRol();
+  const currentRole = authService.obtenerRol();
 
-  if (currentRole === expectedRole) {
+  if (
+    currentRole &&
+    expectedRoles.length > 0 &&
+    expectedRoles.includes(currentRole)
+  ) {
     return true;
   }
 
-  return router.createUrlTree([
-    '/'
-  ]);
-
+  return router.createUrlTree(['/']);
 };

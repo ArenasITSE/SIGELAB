@@ -1,0 +1,389 @@
+
+<div class="calendario-container">
+
+  <!-- ENCABEZADO -->
+  <div class="page-header">
+
+    <div>
+      <span class="section-label">GESTIÓN DE LABORATORIOS</span>
+      <h1>Calendario</h1>
+      <p>Consulta la programación y disponibilidad de los laboratorios.</p>
+    </div>
+
+    <button
+      type="button"
+      class="btn-primary"
+      (click)="cargarSolicitudes()"
+      [disabled]="cargando">
+
+      <i class="fas fa-sync-alt" [class.fa-spin]="cargando"></i>
+      Actualizar
+
+    </button>
+
+  </div>
+
+  <!-- MENSAJE -->
+  <div
+    *ngIf="mensaje"
+    class="alert"
+    [ngClass]="tipoMensaje">
+
+    <i
+      class="fas"
+      [ngClass]="tipoMensaje === 'success'
+        ? 'fa-check-circle'
+        : 'fa-exclamation-circle'">
+    </i>
+
+    {{ mensaje }}
+
+    <button type="button" (click)="mensaje = ''">
+      <i class="fas fa-times"></i>
+    </button>
+
+  </div>
+
+  <!-- ESTADÍSTICAS -->
+  <div class="stats-grid">
+
+    <div class="stat-card">
+
+      <div class="stat-icon purple">
+        <i class="fas fa-calendar-alt"></i>
+      </div>
+
+      <div>
+        <span>Total de solicitudes</span>
+        <strong>{{ totalSolicitudes }}</strong>
+      </div>
+
+    </div>
+
+    <div class="stat-card">
+
+      <div class="stat-icon green">
+        <i class="fas fa-check-circle"></i>
+      </div>
+
+      <div>
+        <span>Autorizadas</span>
+        <strong>{{ totalAutorizadas }}</strong>
+      </div>
+
+    </div>
+
+    <div class="stat-card">
+
+      <div class="stat-icon orange">
+        <i class="fas fa-clock"></i>
+      </div>
+
+      <div>
+        <span>Pendientes</span>
+        <strong>{{ totalPendientes }}</strong>
+      </div>
+
+    </div>
+
+    <div class="stat-card">
+
+      <div class="stat-icon red">
+        <i class="fas fa-times-circle"></i>
+      </div>
+
+      <div>
+        <span>Rechazadas</span>
+        <strong>{{ totalRechazadas }}</strong>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <div class="calendar-layout">
+
+    <!-- CALENDARIO -->
+    <section class="content-card calendar-card">
+
+      <!-- CABECERA DEL CALENDARIO -->
+      <div class="calendar-header">
+
+        <div class="month-navigation">
+
+          <button
+            type="button"
+            class="nav-button"
+            title="Mes anterior"
+            (click)="mesAnterior()">
+
+            <i class="fas fa-chevron-left"></i>
+
+          </button>
+
+          <h2>{{ nombreMes }}</h2>
+
+          <button
+            type="button"
+            class="nav-button"
+            title="Mes siguiente"
+            (click)="mesSiguiente()">
+
+            <i class="fas fa-chevron-right"></i>
+
+          </button>
+
+        </div>
+
+        <button
+          type="button"
+          class="today-button"
+          (click)="irAHoy()">
+
+          Hoy
+
+        </button>
+
+      </div>
+
+      <!-- FILTROS -->
+      <div class="calendar-filters">
+
+        <span>Mostrar:</span>
+
+        <button
+          type="button"
+          [class.active]="filtroEstatus === 'TODOS'"
+          (click)="cambiarFiltro('TODOS')">
+          Todos
+        </button>
+
+        <button
+          type="button"
+          [class.active]="filtroEstatus === 'AUTORIZADA'"
+          (click)="cambiarFiltro('AUTORIZADA')">
+          <span class="legend-dot green"></span>
+          Autorizadas
+        </button>
+
+        <button
+          type="button"
+          [class.active]="filtroEstatus === 'PENDIENTE'"
+          (click)="cambiarFiltro('PENDIENTE')">
+          <span class="legend-dot orange"></span>
+          Pendientes
+        </button>
+
+        <button
+          type="button"
+          [class.active]="filtroEstatus === 'RECHAZADA'"
+          (click)="cambiarFiltro('RECHAZADA')">
+          <span class="legend-dot red"></span>
+          Rechazadas
+        </button>
+
+      </div>
+
+      <!-- CARGANDO -->
+      <div class="loading" *ngIf="cargando">
+
+        <i class="fas fa-spinner fa-spin"></i>
+        Cargando calendario...
+
+      </div>
+
+      <!-- CUADRÍCULA -->
+      <div class="calendar-grid" *ngIf="!cargando">
+
+        <!-- DÍAS DE LA SEMANA -->
+        <div
+          class="weekday"
+          *ngFor="let dia of diasSemana">
+
+          {{ dia }}
+
+        </div>
+
+        <!-- DÍAS -->
+        <button
+          type="button"
+          class="calendar-day"
+          *ngFor="let dia of calendarDays"
+
+          [class.other-month]="!dia.perteneceMes"
+          [class.today]="dia.esHoy"
+          [class.selected]="dia.seleccionado"
+
+          (click)="seleccionarDia(dia)">
+
+          <span class="day-number">
+            {{ dia.numero }}
+          </span>
+
+          <div class="day-events">
+
+            <span
+              class="event-chip"
+              *ngFor="let solicitud of dia.solicitudes | slice:0:2"
+              [ngClass]="obtenerClaseEstatus(solicitud.estatus)">
+
+              {{ solicitud.horaInicio }} · {{ solicitud.laboratorio }}
+
+            </span>
+
+            <span
+              class="more-events"
+              *ngIf="dia.solicitudes.length > 2">
+
+              +{{ dia.solicitudes.length - 2 }} más
+
+            </span>
+
+          </div>
+
+        </button>
+
+      </div>
+
+      <!-- LEYENDA -->
+      <div class="calendar-legend">
+
+        <div>
+          <span class="legend-dot green"></span>
+          Autorizada
+        </div>
+
+        <div>
+          <span class="legend-dot orange"></span>
+          Pendiente
+        </div>
+
+        <div>
+          <span class="legend-dot red"></span>
+          Rechazada
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- DETALLE DEL DÍA -->
+    <aside class="content-card day-card">
+
+      <div class="day-card-header">
+
+        <span class="section-label">PROGRAMACIÓN</span>
+
+        <h2>Agenda del día</h2>
+
+        <p>{{ fechaSeleccionadaTexto }}</p>
+
+      </div>
+
+      <div class="day-summary">
+
+        <span>
+          {{ solicitudesDelDia.length }}
+          {{ solicitudesDelDia.length === 1
+            ? 'solicitud encontrada'
+            : 'solicitudes encontradas' }}
+        </span>
+
+      </div>
+
+      <!-- SOLICITUDES DEL DÍA -->
+      <div class="day-events-list">
+
+        <div
+          class="day-event"
+          *ngFor="let solicitud of solicitudesDelDia">
+
+          <div
+            class="event-indicator"
+            [ngClass]="obtenerClaseEstatus(solicitud.estatus)">
+          </div>
+
+          <div class="event-content">
+
+            <div class="event-time">
+
+              <i class="far fa-clock"></i>
+
+              {{ solicitud.horaInicio }} - {{ solicitud.horaFin }}
+
+            </div>
+
+            <h3>{{ solicitud.laboratorio }}</h3>
+
+            <p class="event-teacher">
+
+              <i class="fas fa-user"></i>
+
+              {{ solicitud.solicitante }}
+
+            </p>
+
+            <p class="event-career" *ngIf="solicitud.carrera">
+
+              <i class="fas fa-graduation-cap"></i>
+
+              {{ solicitud.carrera }}
+
+            </p>
+
+            <p class="event-reason">
+              {{ solicitud.motivo }}
+            </p>
+
+            <div class="event-footer">
+
+              <span
+                class="status"
+                [ngClass]="obtenerClaseEstatus(solicitud.estatus)">
+
+                {{ solicitud.estatus }}
+
+              </span>
+
+              <span class="people">
+                <i class="fas fa-users"></i>
+                {{ solicitud.numeroPersonas }} personas
+              </span>
+
+            </div>
+
+            <p
+              class="observations"
+              *ngIf="solicitud.observaciones">
+
+              {{ solicitud.observaciones }}
+
+            </p>
+
+          </div>
+
+        </div>
+
+        <!-- SIN SOLICITUDES -->
+        <div
+          class="empty-day"
+          *ngIf="solicitudesDelDia.length === 0">
+
+          <i class="far fa-calendar-check"></i>
+
+          <strong>Sin solicitudes</strong>
+
+          <span>
+            No hay solicitudes para esta fecha con el filtro seleccionado.
+          </span>
+
+        </div>
+
+      </div>
+
+    </aside>
+
+  </div>
+
+</div>

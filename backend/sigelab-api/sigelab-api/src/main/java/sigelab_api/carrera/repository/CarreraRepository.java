@@ -1,7 +1,5 @@
 package sigelab_api.carrera.repository;
 
-
-
 import org.springframework.data.jpa.repository.JpaRepository;
 import sigelab_api.carrera.entity.Carrera;
 

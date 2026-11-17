@@ -1,3 +1,4 @@
+
 package sigelab_api.usuario.dto;
 
 import jakarta.validation.constraints.Email;
@@ -8,18 +9,18 @@ import sigelab_api.usuario.entity.Rol;
 
 public record UsuarioRequest(
 
-        @NotBlank
-        String nombre,
+    @NotBlank(message = "El nombre es obligatorio")
+    String nombre,
 
-        @Email
-        @NotBlank
-        String correo,
+    @NotBlank(message = "El correo es obligatorio")
+    @Email(message = "El correo no es válido")
+    String correo,
 
-        @NotBlank
-        String password,
+    String password,
 
-        @NotNull
-        Rol rol
+    @NotNull(message = "El rol es obligatorio")
+    Rol rol,
 
-) {
-}
+    Long carreraId
+
+) {}

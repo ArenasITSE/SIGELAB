@@ -46,6 +46,8 @@ public class AuthService {
                                 new RuntimeException("Usuario no encontrado")
                         );
 
+                        
+
         return new LoginResponse(
                 token,
                 usuario.getRol().name(),

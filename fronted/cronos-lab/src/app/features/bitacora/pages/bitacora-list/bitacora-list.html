@@ -1,0 +1,493 @@
+
+<div class="bitacora-container">
+
+  <!-- ENCABEZADO -->
+  <header class="page-header">
+    <div class="header-info">
+      <div class="header-icon">
+        <i class="fas fa-clipboard-list"></i>
+      </div>
+
+      <div>
+        <h1>Bitácora de laboratorios</h1>
+        <p>Consulta y seguimiento del historial de uso de laboratorios</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button
+        class="btn-pdf"
+        type="button"
+        (click)="descargarPDF()"
+        [disabled]="cargando || registrosFiltrados.length === 0">
+
+        <i class="fas fa-file-pdf"></i>
+        Exportar PDF
+      </button>
+
+      <button
+        class="btn-refresh"
+        type="button"
+        (click)="cargarRegistros()"
+        [disabled]="cargando">
+
+        <i class="fas fa-sync-alt" [class.fa-spin]="cargando"></i>
+        Actualizar
+      </button>
+    </div>
+  </header>
+
+  <!-- MENSAJES -->
+  <div
+    *ngIf="mensaje"
+    class="alert-message"
+    [ngClass]="'alert-' + tipoMensaje">
+
+    <i
+      class="fas"
+      [ngClass]="{
+        'fa-check-circle': tipoMensaje === 'success',
+        'fa-exclamation-circle': tipoMensaje === 'error',
+        'fa-info-circle': tipoMensaje === 'info'
+      }">
+    </i>
+
+    <span>{{ mensaje }}</span>
+  </div>
+
+  <!-- ESTADÍSTICAS -->
+  <section class="stats-grid">
+
+    <article class="stat-card">
+      <div class="stat-icon purple">
+        <i class="fas fa-clipboard-list"></i>
+      </div>
+
+      <div class="stat-content">
+        <span>Total de registros</span>
+        <strong>{{ totalRegistros }}</strong>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon blue">
+        <i class="fas fa-flask"></i>
+      </div>
+
+      <div class="stat-content">
+        <span>Laboratorios utilizados</span>
+        <strong>{{ totalLaboratorios }}</strong>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon green">
+        <i class="fas fa-chalkboard-teacher"></i>
+      </div>
+
+      <div class="stat-content">
+        <span>Docentes registrados</span>
+        <strong>{{ totalDocentes }}</strong>
+      </div>
+    </article>
+
+    <article class="stat-card">
+      <div class="stat-icon orange">
+        <i class="fas fa-book"></i>
+      </div>
+
+      <div class="stat-content">
+        <span>Materias registradas</span>
+        <strong>{{ totalMaterias }}</strong>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <section class="content-card">
+
+    <div class="section-heading">
+      <div>
+        <h2>Historial de uso</h2>
+        <p>Registros de entrada y salida de los laboratorios</p>
+      </div>
+
+      <span class="total-badge">
+        {{ registrosFiltrados.length }} registros
+      </span>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="filters-container">
+
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+
+        <input
+          type="text"
+          [(ngModel)]="busqueda"
+          (ngModelChange)="aplicarFiltros()"
+          placeholder="Buscar docente, materia, laboratorio o registro...">
+      </div>
+
+      <div class="date-filter">
+        <i class="far fa-calendar-alt"></i>
+
+        <input
+          type="date"
+          [(ngModel)]="filtroFecha"
+          (ngModelChange)="aplicarFiltros()">
+      </div>
+
+      <button
+        type="button"
+        class="btn-clear"
+        (click)="limpiarFiltros()">
+
+        <i class="fas fa-eraser"></i>
+        Limpiar
+      </button>
+
+    </div>
+
+    <!-- CARGANDO -->
+    <div *ngIf="cargando" class="loading-state">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Cargando registros de bitácora...</p>
+    </div>
+
+    <!-- TABLA -->
+    <div
+      class="table-responsive"
+      *ngIf="!cargando && registrosFiltrados.length > 0">
+
+      <table class="bitacora-table">
+
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>DOCENTE</th>
+            <th>MATERIA</th>
+            <th>LABORATORIO</th>
+            <th>FECHA</th>
+            <th>HORARIO</th>
+            <th>DURACIÓN</th>
+            <th>DETALLE</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let registro of registrosPaginados">
+
+            <td>
+              <span class="record-id">
+                #{{ registro.id }}
+              </span>
+            </td>
+
+            <td>
+              <div class="teacher-info">
+                <div class="avatar">
+                  {{ registro.docente?.charAt(0)?.toUpperCase() || 'U' }}
+                </div>
+
+                <span>{{ registro.docente || '-' }}</span>
+              </div>
+            </td>
+
+            <td>
+              <span class="subject-label">
+                {{ registro.materia || '-' }}
+              </span>
+            </td>
+
+            <td>
+              <span class="laboratory-label">
+                <i class="fas fa-flask"></i>
+                {{ registro.laboratorio || '-' }}
+              </span>
+            </td>
+
+            <td>
+              <span class="date-label">
+                {{ formatearFecha(registro.fecha) }}
+              </span>
+            </td>
+
+            <td>
+              <span class="schedule-label">
+                {{ formatearHora(registro.horaEntrada) }}
+                -
+                {{ formatearHora(registro.horaSalida) }}
+              </span>
+            </td>
+
+            <td>
+              <span class="duration-label">
+                {{ obtenerDuracion(
+                  registro.horaEntrada,
+                  registro.horaSalida
+                ) }}
+              </span>
+            </td>
+
+            <td>
+              <button
+                type="button"
+                class="btn-detail"
+                (click)="verDetalle(registro)"
+                title="Ver detalles">
+
+                <i class="fas fa-eye"></i>
+                Ver
+              </button>
+            </td>
+
+          </tr>
+        </tbody>
+
+      </table>
+    </div>
+
+    <!-- SIN REGISTROS -->
+    <div
+      *ngIf="!cargando && registrosFiltrados.length === 0"
+      class="empty-state">
+
+      <div class="empty-icon">
+        <i class="fas fa-folder-open"></i>
+      </div>
+
+      <h3>No se encontraron registros</h3>
+
+      <p>
+        No hay registros de bitácora que coincidan con los filtros seleccionados.
+      </p>
+
+      <button
+        type="button"
+        class="btn-clear"
+        (click)="limpiarFiltros()">
+
+        <i class="fas fa-eraser"></i>
+        Limpiar filtros
+      </button>
+
+    </div>
+
+    <!-- PAGINACIÓN -->
+    <div
+      class="pagination-container"
+      *ngIf="!cargando && registrosFiltrados.length > 0">
+
+      <span class="pagination-info">
+        Mostrando
+        <strong>{{ primerRegistro }}</strong>
+        a
+        <strong>{{ ultimoRegistro }}</strong>
+        de
+        <strong>{{ registrosFiltrados.length }}</strong>
+        registros
+      </span>
+
+      <div class="pagination-controls">
+
+        <button
+          type="button"
+          class="pagination-btn"
+          (click)="paginaAnterior()"
+          [disabled]="paginaActual === 1">
+
+          <i class="fas fa-chevron-left"></i>
+        </button>
+
+        <span class="page-indicator">
+          Página {{ paginaActual }} de {{ totalPaginas }}
+        </span>
+
+        <button
+          type="button"
+          class="pagination-btn"
+          (click)="paginaSiguiente()"
+          [disabled]="paginaActual === totalPaginas">
+
+          <i class="fas fa-chevron-right"></i>
+        </button>
+
+      </div>
+    </div>
+
+  </section>
+
+  <!-- MODAL DE DETALLE -->
+  <div
+    class="modal-overlay"
+    *ngIf="registroSeleccionado"
+    (click)="cerrarDetalle()">
+
+    <div
+      class="detail-modal"
+      (click)="$event.stopPropagation()">
+
+      <!-- ENCABEZADO MODAL -->
+      <div class="modal-header">
+
+        <div class="modal-title">
+          <div class="modal-icon">
+            <i class="fas fa-clipboard-check"></i>
+          </div>
+
+          <div>
+            <h2>Detalle de bitácora</h2>
+            <p>Información del registro de laboratorio</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="btn-close"
+          (click)="cerrarDetalle()">
+
+          <i class="fas fa-times"></i>
+        </button>
+
+      </div>
+
+      <!-- CONTENIDO MODAL -->
+      <div class="modal-body">
+
+        <div class="record-reference">
+          <span>Identificador del registro</span>
+          <strong>#{{ registroSeleccionado.id }}</strong>
+        </div>
+
+        <div class="detail-grid">
+
+          <div class="detail-item">
+            <span class="detail-label">
+              <i class="fas fa-user"></i>
+              Docente
+            </span>
+
+            <strong>{{ registroSeleccionado.docente || '-' }}</strong>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">
+              <i class="fas fa-book"></i>
+              Materia
+            </span>
+
+            <strong>{{ registroSeleccionado.materia || '-' }}</strong>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">
+              <i class="fas fa-flask"></i>
+              Laboratorio
+            </span>
+
+            <strong>{{ registroSeleccionado.laboratorio || '-' }}</strong>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">
+              <i class="fas fa-hashtag"></i>
+              Solicitud relacionada
+            </span>
+
+            <strong>#{{ registroSeleccionado.solicitudId }}</strong>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">
+              <i class="far fa-calendar-alt"></i>
+              Fecha
+            </span>
+
+            <strong>
+              {{ formatearFechaLarga(registroSeleccionado.fecha) }}
+            </strong>
+          </div>
+
+          <div class="detail-item">
+            <span class="detail-label">
+              <i class="far fa-clock"></i>
+              Duración
+            </span>
+
+            <strong>
+              {{ obtenerDuracion(
+                registroSeleccionado.horaEntrada,
+                registroSeleccionado.horaSalida
+              ) }}
+            </strong>
+          </div>
+
+        </div>
+
+        <!-- HORARIO -->
+        <div class="schedule-detail">
+
+          <div>
+            <span>Hora de entrada</span>
+            <strong>
+              {{ formatearHora(registroSeleccionado.horaEntrada) }}
+            </strong>
+          </div>
+
+          <i class="fas fa-arrow-right"></i>
+
+          <div>
+            <span>Hora de salida</span>
+            <strong>
+              {{ formatearHora(registroSeleccionado.horaSalida) }}
+            </strong>
+          </div>
+
+        </div>
+
+        <!-- OBSERVACIONES -->
+        <div class="text-section">
+          <h3>
+            <i class="fas fa-comment-alt"></i>
+            Observaciones
+          </h3>
+
+          <p>
+            {{ registroSeleccionado.observaciones || 'Sin observaciones registradas.' }}
+          </p>
+        </div>
+
+        <!-- INCIDENCIAS -->
+        <div class="text-section">
+          <h3>
+            <i class="fas fa-exclamation-triangle"></i>
+            Incidencias
+          </h3>
+
+          <p>
+            {{ registroSeleccionado.incidencias || 'Sin incidencias registradas.' }}
+          </p>
+        </div>
+
+      </div>
+
+      <!-- PIE MODAL -->
+      <div class="modal-footer">
+
+        <button
+          type="button"
+          class="btn-modal-close"
+          (click)="cerrarDetalle()">
+
+          Cerrar
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+
+</div>

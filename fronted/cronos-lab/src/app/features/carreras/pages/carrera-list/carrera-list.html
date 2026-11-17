@@ -1,0 +1,391 @@
+
+<div class="carreras-container">
+
+  <!-- ENCABEZADO -->
+  <div class="page-header">
+
+    <div>
+      <span class="section-label">GESTIÓN ACADÉMICA</span>
+
+      <h1>Gestión de carreras</h1>
+
+      <p>Administra las carreras disponibles en SIGELAB.</p>
+    </div>
+
+    <button
+      *ngIf="esAdministrador"
+      class="btn-primary"
+      type="button"
+      (click)="abrirFormulario()">
+
+      <i class="fas fa-plus"></i>
+      Nueva carrera
+
+    </button>
+
+  </div>
+
+  <!-- MENSAJES -->
+  <div
+    *ngIf="mensaje"
+    class="alert"
+    [ngClass]="tipoMensaje">
+
+    <i
+      class="fas"
+      [ngClass]="tipoMensaje === 'success'
+        ? 'fa-check-circle'
+        : 'fa-exclamation-circle'">
+    </i>
+
+    {{ mensaje }}
+
+    <button
+      type="button"
+      (click)="mensaje = ''">
+
+      <i class="fas fa-times"></i>
+
+    </button>
+
+  </div>
+
+  <!-- ESTADÍSTICAS -->
+  <div class="stats-grid">
+
+    <div class="stat-card">
+
+      <div class="stat-icon purple">
+        <i class="fas fa-graduation-cap"></i>
+      </div>
+
+      <div>
+        <span>Total de carreras</span>
+        <strong>{{ totalCarreras }}</strong>
+      </div>
+
+    </div>
+
+    <div class="stat-card">
+
+      <div class="stat-icon green">
+        <i class="fas fa-check-circle"></i>
+      </div>
+
+      <div>
+        <span>Activas</span>
+        <strong>{{ carrerasActivas }}</strong>
+      </div>
+
+    </div>
+
+    <div class="stat-card">
+
+      <div class="stat-icon gray">
+        <i class="fas fa-ban"></i>
+      </div>
+
+      <div>
+        <span>Inactivas</span>
+        <strong>{{ carrerasInactivas }}</strong>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- CATÁLOGO -->
+  <div class="content-card">
+
+    <!-- CABECERA DE TABLA -->
+    <div class="table-header">
+
+      <div>
+        <h2>Catálogo de carreras</h2>
+
+        <p>
+          Listado de carreras registradas en el sistema.
+        </p>
+      </div>
+
+      <div class="search-box">
+
+        <i class="fas fa-search"></i>
+
+        <input
+          type="text"
+          name="busqueda"
+          [(ngModel)]="busqueda"
+          (ngModelChange)="filtrarCarreras()"
+          placeholder="Buscar por clave o nombre...">
+
+      </div>
+
+    </div>
+
+    <!-- CARGANDO -->
+    <div class="loading" *ngIf="cargando">
+
+      <i class="fas fa-spinner fa-spin"></i>
+
+      Cargando carreras...
+
+    </div>
+
+    <!-- TABLA -->
+    <div class="table-responsive" *ngIf="!cargando">
+
+      <table>
+
+        <thead>
+
+          <tr>
+            <th>CLAVE</th>
+            <th>NOMBRE DE LA CARRERA</th>
+            <th>ESTATUS</th>
+
+            <th
+              *ngIf="esAdministrador"
+              class="actions-header">
+              ACCIONES
+            </th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <!-- REGISTROS -->
+          <tr *ngFor="let carrera of carrerasFiltradas">
+
+            <td>
+              <span class="career-key">
+                {{ carrera.clave }}
+              </span>
+            </td>
+
+            <td>
+
+              <div class="career-name">
+
+                <div class="career-avatar">
+                  <i class="fas fa-graduation-cap"></i>
+                </div>
+
+                <strong>
+                  {{ carrera.nombre }}
+                </strong>
+
+              </div>
+
+            </td>
+
+            <td>
+
+              <span
+                class="status"
+                [ngClass]="carrera.activo ? 'active' : 'inactive'">
+
+                <span class="status-dot"></span>
+
+                {{ carrera.activo ? 'Activa' : 'Inactiva' }}
+
+              </span>
+
+            </td>
+
+            <!-- ACCIONES -->
+            <td *ngIf="esAdministrador">
+
+              <div class="actions">
+
+                <button
+                  type="button"
+                  class="btn-icon edit"
+                  title="Editar carrera"
+                  [disabled]="!carrera.activo || procesando"
+                  (click)="editarCarrera(carrera)">
+
+                  <i class="fas fa-edit"></i>
+
+                </button>
+
+                <button
+                  type="button"
+                  class="btn-icon delete"
+                  title="Desactivar carrera"
+                  [disabled]="!carrera.activo || procesando"
+                  (click)="desactivarCarrera(carrera)">
+
+                  <i class="fas fa-ban"></i>
+
+                </button>
+
+              </div>
+
+            </td>
+
+          </tr>
+
+          <!-- SIN RESULTADOS -->
+          <tr *ngIf="carrerasFiltradas.length === 0">
+
+            <td
+              [attr.colspan]="esAdministrador ? 4 : 3"
+              class="empty-state">
+
+              <i class="fas fa-folder-open"></i>
+
+              <strong>
+                No se encontraron carreras
+              </strong>
+
+              <span>
+                No hay carreras que coincidan con tu búsqueda.
+              </span>
+
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <!-- PIE DE TABLA -->
+    <div class="table-footer" *ngIf="!cargando">
+
+      Mostrando {{ carrerasFiltradas.length }}
+      de {{ totalCarreras }} carreras
+
+    </div>
+
+  </div>
+
+  <!-- MODAL REGISTRAR / EDITAR -->
+  <div
+    class="modal-overlay"
+    *ngIf="mostrarFormulario"
+    (click)="cancelarFormulario()">
+
+    <div
+      class="modal-card"
+      (click)="$event.stopPropagation()">
+
+      <!-- CABECERA MODAL -->
+      <div class="modal-header">
+
+        <div>
+
+          <span class="section-label">
+            CATÁLOGO ACADÉMICO
+          </span>
+
+          <h2>
+            {{ modoEdicion ? 'Editar carrera' : 'Nueva carrera' }}
+          </h2>
+
+          <p>
+            {{
+              modoEdicion
+                ? 'Actualiza la información de la carrera.'
+                : 'Registra una nueva carrera en SIGELAB.'
+            }}
+          </p>
+
+        </div>
+
+        <button
+          type="button"
+          class="close-button"
+          (click)="cancelarFormulario()">
+
+          <i class="fas fa-times"></i>
+
+        </button>
+
+      </div>
+
+      <!-- FORMULARIO -->
+      <form
+        #formCarrera="ngForm"
+        (ngSubmit)="guardarCarrera()">
+
+        <div class="form-group">
+
+          <label for="clave">
+            Clave de la carrera
+          </label>
+
+          <input
+            id="clave"
+            type="text"
+            name="clave"
+            [(ngModel)]="formulario.clave"
+            placeholder="Ej. ISC"
+            maxlength="20"
+            required>
+
+        </div>
+
+        <div class="form-group">
+
+          <label for="nombre">
+            Nombre de la carrera
+          </label>
+
+          <input
+            id="nombre"
+            type="text"
+            name="nombre"
+            [(ngModel)]="formulario.nombre"
+            placeholder="Ej. Ingeniería en Sistemas Computacionales"
+            maxlength="150"
+            required>
+
+        </div>
+
+        <!-- BOTONES -->
+        <div class="modal-actions">
+
+          <button
+            type="button"
+            class="btn-secondary"
+            [disabled]="procesando"
+            (click)="cancelarFormulario()">
+
+            Cancelar
+
+          </button>
+
+          <button
+            type="submit"
+            class="btn-primary"
+            [disabled]="procesando || formCarrera.invalid">
+
+            <i
+              class="fas"
+              [ngClass]="procesando
+                ? 'fa-spinner fa-spin'
+                : 'fa-save'">
+            </i>
+
+            {{
+              procesando
+                ? 'Guardando...'
+                : (modoEdicion ? 'Guardar cambios' : 'Registrar carrera')
+            }}
+
+          </button>
+
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+</div>

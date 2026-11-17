@@ -1,24 +1,25 @@
 package sigelab_api.laboratorio.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 
 public record LaboratorioRequest(
 
-        @NotBlank
-        String nombre,
+    @NotBlank(message = "El nombre es obligatorio")
+    String nombre,
 
-        @NotNull
-        Long encargadoId,
+    @NotNull(message = "El encargado es obligatorio")
+    Long encargadoId,
 
-        @NotNull
-        Long carreraId,
+    @NotNull(message = "La carrera es obligatoria")
+    Long carreraId,
 
-        @NotBlank
-        String ubicacion,
+    @NotBlank(message = "La ubicación es obligatoria")
+    String ubicacion,
 
-        @NotNull
-        Integer capacidad
+    @NotNull(message = "La capacidad es obligatoria")
+    @Positive(message = "La capacidad debe ser mayor que cero")
+    Integer capacidad,
 
-) {
-}
+    String estatus
+
+) {}

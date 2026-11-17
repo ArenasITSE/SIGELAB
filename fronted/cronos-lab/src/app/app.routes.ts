@@ -11,9 +11,13 @@ import { DashboardDocente } from './features/dashboard-docente/dashboard-docente
 
 import { DashboardTecnico } from './features/dashboard-tecnico/dashboard-tecnico/dashboard-tecnico';
 
+import { DashboardAdmin } from './features/dashboard-admin/dashboard-admin';
+
 import { DashboardCoordinador } from './features/dashboard-coordinador/dashboard-coordinador/dashboard-coordinador';
 
 import { MainLayoutComponent } from './layout/main-layout/main-layout';
+import { LaboratorioListComponent } from './features/laboratorios/pages/laboratorio-list/laboratorio-list';
+
 
 export const routes: Routes = [
 
@@ -64,7 +68,73 @@ export const routes: Routes = [
         data: {
           role: 'COORDINADOR'
         }
-      }
+      },
+      {
+        path: 'dashboard-admin',
+        component: DashboardAdmin,
+        canActivate: [roleGuard],
+        data: {
+          role: 'ADMINISTRADOR'
+        }
+      },
+      {
+  path: 'laboratorios',
+  component: LaboratorioListComponent,
+  canActivate: [roleGuard],
+  data: {
+    roles: [
+      'ADMINISTRADOR',
+      'COORDINADOR',
+      'TECNICO',
+      'DOCENTE'
+    ]
+  }
+  
+},
+{
+  path: 'usuarios',
+  loadComponent: () =>
+    import('./features/usuarios/pages/usuario-list/usuario-list')
+      .then(m => m.UsuarioListComponent)
+},
+{
+  path: 'solicitudes',
+  loadComponent: () =>
+    import('./features/solicitudes/pages/solicitud-list/solicitud-list')
+      .then(m => m.SolicitudListComponent)
+},
+
+{
+  path: 'carreras',
+  loadComponent: () =>
+    import('./features/carreras/pages/carrera-list/carrera-list')
+      .then(m => m.CarreraListComponent)
+},
+
+{
+  path: 'docentes',
+  loadComponent: () =>
+    import('./features/docentes/pages/docente-list/docente-list')
+      .then(m => m.DocenteListComponent)
+},
+{
+  path: 'calendario',
+  loadComponent: () =>
+    import('./features/calendario/pages/calendario-list/calendario-list')
+      .then(m => m.CalendarioListComponent)
+},
+
+{
+  path: 'bitacora',
+  loadComponent: () =>
+    import('./features/bitacora/pages/bitacora-list/bitacora-list')
+      .then(m => m.BitacoraListComponent)
+}
+
+
+
+
+
 
     ]
   },

@@ -1,11 +1,21 @@
+
 <header class="navbar">
 
-    <div>
-        Sistema de Gestión de Laboratorios
+  <div class="navbar-title">
+    Sistema de Gestión de Laboratorios
+  </div>
+
+  <div class="navbar-user">
+
+    <div class="user-avatar">
+      {{ nombre.charAt(0).toUpperCase() }}
     </div>
 
-    <div>
-        Administrador
+    <div class="user-details">
+      <strong>{{ nombre }}</strong>
+      <small>{{ tituloRol }}</small>
     </div>
+
+  </div>
 
 </header>

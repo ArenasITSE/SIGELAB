@@ -14,25 +14,35 @@ import java.util.Optional;
 @Repository
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
-    /**
-     * Buscar usuario por correo electrónico.
-     */
     Optional<Usuario> findByCorreo(String correo);
 
-    /**
-     * Verificar si ya existe un usuario con ese correo.
-     */
+    @EntityGraph(attributePaths = {"carrera"})
+    Optional<Usuario> findWithCarreraByCorreo(String correo);
+
     boolean existsByCorreo(String correo);
 
-    /**
-     * Contar usuarios por rol.
-     */
     long countByRol(Rol rol);
 
     /**
+     * Buscar usuario por ID incluyendo su carrera.
+     */
+    @EntityGraph(attributePaths = {"carrera"})
+    Optional<Usuario> findWithCarreraById(Long id);
+
+    /**
+     * Listar usuarios de una carrera.
+     */
+    @EntityGraph(attributePaths = {"carrera"})
+    List<Usuario> findAllByCarrera_Id(Long carreraId);
+
+    /**
+     * Buscar usuario por ID y carrera.
+     */
+    @EntityGraph(attributePaths = {"carrera"})
+    Optional<Usuario> findByIdAndCarrera_Id(Long id, Long carreraId);
+
+    /**
      * Obtener todos los usuarios incluyendo su carrera.
-     * Evita LazyInitializationException al convertir las entidades
-     * en objetos UsuarioResponse.
      */
     @Override
     @EntityGraph(attributePaths = {"carrera"})

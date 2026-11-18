@@ -1,3 +1,4 @@
+
 package sigelab_api.solicitud.service;
 
 import sigelab_api.solicitud.dto.SolicitudRequest;
@@ -7,15 +8,11 @@ import java.util.List;
 
 public interface SolicitudService {
 
- SolicitudResponse crear(
-        SolicitudRequest request,
-        String correoUsuario
-);
+    SolicitudResponse crear(SolicitudRequest request);
+
     List<SolicitudResponse> listar();
 
-    SolicitudResponse buscarPorId(
-            Long id
-    );
+    SolicitudResponse buscarPorId(Long id);
 
     SolicitudResponse aprobar(
             Long id,
@@ -29,5 +26,5 @@ public interface SolicitudService {
 
     void eliminar(Long id);
 
-   List<SolicitudResponse> listarMisSolicitudes(Long docenteId);
+    List<SolicitudResponse> listarMisSolicitudes();
 }

@@ -1,6 +1,9 @@
+
 package sigelab_api.laboratorio.dto;
 
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 public record LaboratorioRequest(
 
@@ -10,7 +13,6 @@ public record LaboratorioRequest(
     @NotNull(message = "El encargado es obligatorio")
     Long encargadoId,
 
-    @NotNull(message = "La carrera es obligatoria")
     Long carreraId,
 
     @NotBlank(message = "La ubicación es obligatoria")

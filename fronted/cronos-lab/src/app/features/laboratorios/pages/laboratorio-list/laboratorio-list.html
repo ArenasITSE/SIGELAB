@@ -5,23 +5,32 @@
   <div class="page-header">
 
     <div>
-      <h1>Gestión de laboratorios</h1>
+      <h1>
+        {{ esDocente ? 'Laboratorios disponibles' : 'Gestión de laboratorios' }}
+      </h1>
+
       <p>
-        Administra los espacios y recursos de infraestructura académica.
+        {{ esDocente
+          ? 'Consulta los laboratorios disponibles para realizar tus solicitudes.'
+          : 'Administra los espacios y recursos de infraestructura académica.'
+        }}
       </p>
     </div>
 
-    <button
-      class="btn-primary"
-      type="button"
-      (click)="nuevoLaboratorio()">
+    @if (puedeGestionarLaboratorios) {
+      <button
+        class="btn-primary"
+        type="button"
+        (click)="nuevoLaboratorio()">
 
-      <i class="fas fa-plus"></i>
-      Nuevo laboratorio
+        <i class="fas fa-plus"></i>
+        Nuevo laboratorio
 
-    </button>
+      </button>
+    }
 
   </div>
+
 
   <!-- MENSAJES -->
   @if (mensaje) {
@@ -43,6 +52,7 @@
 
   }
 
+
   <!-- ESTADÍSTICAS -->
   <div class="stats-grid">
 
@@ -54,11 +64,14 @@
       </div>
 
       <div>
-        <span>Total de laboratorios</span>
+        <span>
+          {{ esDocente ? 'Laboratorios disponibles' : 'Total de laboratorios' }}
+        </span>
         <h2>{{ laboratorios.length }}</h2>
       </div>
 
     </div>
+
 
     <!-- DISPONIBLES -->
     <div class="stat-card">
@@ -74,38 +87,45 @@
 
     </div>
 
-    <!-- MANTENIMIENTO -->
-    <div class="stat-card">
 
-      <div class="stat-icon orange">
-        <i class="fas fa-tools"></i>
+    <!-- MANTENIMIENTO: SOLO ADMINISTRADOR Y COORDINADOR -->
+    @if (puedeGestionarLaboratorios) {
+
+      <div class="stat-card">
+
+        <div class="stat-icon orange">
+          <i class="fas fa-tools"></i>
+        </div>
+
+        <div>
+          <span>En mantenimiento</span>
+          <h2>{{ totalMantenimiento }}</h2>
+        </div>
+
       </div>
 
-      <div>
-        <span>En mantenimiento</span>
-        <h2>{{ totalMantenimiento }}</h2>
+
+      <!-- INACTIVOS -->
+      <div class="stat-card">
+
+        <div class="stat-icon red">
+          <i class="fas fa-ban"></i>
+        </div>
+
+        <div>
+          <span>Inactivos</span>
+          <h2>{{ totalInactivos }}</h2>
+        </div>
+
       </div>
 
-    </div>
-
-    <!-- INACTIVOS -->
-    <div class="stat-card">
-
-      <div class="stat-icon red">
-        <i class="fas fa-ban"></i>
-      </div>
-
-      <div>
-        <span>Inactivos</span>
-        <h2>{{ totalInactivos }}</h2>
-      </div>
-
-    </div>
+    }
 
   </div>
 
-  <!-- FORMULARIO -->
-  @if (mostrarFormulario) {
+
+  <!-- FORMULARIO DE REGISTRO Y EDICIÓN -->
+  @if (mostrarFormulario && puedeGestionarLaboratorios) {
 
     <section class="form-card">
 
@@ -130,6 +150,7 @@
 
       </div>
 
+
       <form
         #laboratorioForm="ngForm"
         (ngSubmit)="guardarLaboratorio()">
@@ -152,6 +173,7 @@
 
           </div>
 
+
           <!-- UBICACIÓN -->
           <div class="form-group">
 
@@ -167,58 +189,63 @@
 
           </div>
 
+
           <!-- ENCARGADO -->
+          <div class="form-group">
 
-<div class="form-group">
-  <label>Encargado *</label>
+            <label>Encargado *</label>
 
-  <select
-    name="encargadoId"
-    [(ngModel)]="formulario.encargadoId"
-    required
-    [disabled]="cargandoCatalogos">
+            <select
+              name="encargadoId"
+              [(ngModel)]="formulario.encargadoId"
+              required
+              [disabled]="cargandoCatalogos">
 
-    <option [ngValue]="0" disabled>
-      {{ cargandoCatalogos
-        ? 'Cargando usuarios...'
-        : 'Selecciona un encargado' }}
-    </option>
+              <option [ngValue]="0" disabled>
+                {{ cargandoCatalogos
+                  ? 'Cargando usuarios...'
+                  : 'Selecciona un encargado'
+                }}
+              </option>
 
-    @for (usuario of usuarios; track usuario.id) {
-      <option [ngValue]="usuario.id">
-        {{ usuario.nombre }} — {{ usuario.rol }}
-      </option>
-    }
+              @for (usuario of usuarios; track usuario.id) {
+                <option [ngValue]="usuario.id">
+                  {{ usuario.nombre }} — {{ usuario.rol }}
+                </option>
+              }
 
-  </select>
-</div>
+            </select>
+
+          </div>
 
 
           <!-- CARRERA -->
-  
-<div class="form-group">
-  <label>Carrera *</label>
+          <div class="form-group">
 
-  <select
-    name="carreraId"
-    [(ngModel)]="formulario.carreraId"
-    required
-    [disabled]="cargandoCatalogos">
+            <label>Carrera *</label>
 
-    <option [ngValue]="0" disabled>
-      {{ cargandoCatalogos
-        ? 'Cargando carreras...'
-        : 'Selecciona una carrera' }}
-    </option>
+            <select
+              name="carreraId"
+              [(ngModel)]="formulario.carreraId"
+              required
+              [disabled]="cargandoCatalogos">
 
-    @for (carrera of carreras; track carrera.id) {
-      <option [ngValue]="carrera.id">
-        {{ carrera.nombre }}
-      </option>
-    }
+              <option [ngValue]="0" disabled>
+                {{ cargandoCatalogos
+                  ? 'Cargando carreras...'
+                  : 'Selecciona una carrera'
+                }}
+              </option>
 
-  </select>
-</div>
+              @for (carrera of carreras; track carrera.id) {
+                <option [ngValue]="carrera.id">
+                  {{ carrera.nombre }}
+                </option>
+              }
+
+            </select>
+
+          </div>
 
 
           <!-- CAPACIDAD -->
@@ -238,6 +265,7 @@
 
         </div>
 
+
         <!-- ACCIONES DEL FORMULARIO -->
         <div class="form-actions">
 
@@ -250,6 +278,7 @@
             Cancelar
 
           </button>
+
 
           <button
             type="submit"
@@ -274,17 +303,25 @@
 
   }
 
+
   <!-- TABLA DE LABORATORIOS -->
   <section class="table-card">
 
     <div class="table-header">
 
       <div>
-        <h2>Laboratorios registrados</h2>
+        <h2>
+          {{ esDocente ? 'Laboratorios vigentes' : 'Laboratorios registrados' }}
+        </h2>
+
         <p>
-          Consulta y administra los laboratorios institucionales.
+          {{ esDocente
+            ? 'Espacios disponibles para solicitar prácticas y actividades académicas.'
+            : 'Consulta y administra los laboratorios institucionales.'
+          }}
         </p>
       </div>
+
 
       <!-- BUSCADOR -->
       <div class="search-box">
@@ -300,6 +337,7 @@
       </div>
 
     </div>
+
 
     <!-- CARGANDO -->
     @if (cargando) {
@@ -320,15 +358,21 @@
 
           <thead>
             <tr>
+
               <th>Laboratorio</th>
               <th>Carrera</th>
               <th>Encargado</th>
               <th>Ubicación</th>
               <th>Capacidad</th>
               <th>Estatus</th>
-              <th>Acciones</th>
+
+              @if (puedeGestionarLaboratorios) {
+                <th>Acciones</th>
+              }
+
             </tr>
           </thead>
+
 
           <tbody>
 
@@ -350,20 +394,24 @@
 
                 </td>
 
+
                 <!-- CARRERA -->
                 <td>
                   {{ laboratorio.carrera }}
                 </td>
+
 
                 <!-- ENCARGADO -->
                 <td>
                   {{ laboratorio.encargado }}
                 </td>
 
+
                 <!-- UBICACIÓN -->
                 <td>
                   {{ laboratorio.ubicacion }}
                 </td>
+
 
                 <!-- CAPACIDAD -->
                 <td>
@@ -373,6 +421,7 @@
                   </span>
 
                 </td>
+
 
                 <!-- ESTATUS -->
                 <td>
@@ -389,64 +438,70 @@
 
                 </td>
 
-                <!-- ACCIONES -->
-                <td>
 
-                  <div class="actions">
+                <!-- ACCIONES: SOLO ADMINISTRADOR Y COORDINADOR -->
+                @if (puedeGestionarLaboratorios) {
 
-                    @if (laboratorio.estatus !== 'INACTIVO') {
+                  <td>
 
-                      <!-- EDITAR -->
-                      <button
-                        class="action-btn edit"
-                        type="button"
-                        title="Editar laboratorio"
-                        [disabled]="procesandoId !== null"
-                        (click)="editarLaboratorio(laboratorio)">
+                    <div class="actions">
 
-                        <i class="fas fa-edit"></i>
+                      @if (laboratorio.estatus !== 'INACTIVO') {
 
-                      </button>
+                        <!-- EDITAR -->
+                        <button
+                          class="action-btn edit"
+                          type="button"
+                          title="Editar laboratorio"
+                          [disabled]="procesandoId !== null"
+                          (click)="editarLaboratorio(laboratorio)">
 
-                      <!-- DESACTIVAR -->
-                      <button
-                        class="action-btn delete"
-                        type="button"
-                        title="Desactivar laboratorio"
-                        [disabled]="procesandoId !== null"
-                        (click)="eliminarLaboratorio(laboratorio)">
+                          <i class="fas fa-edit"></i>
 
-                        @if (procesandoId === laboratorio.id) {
-                          <i class="fas fa-spinner fa-spin"></i>
-                        } @else {
-                          <i class="fas fa-ban"></i>
-                        }
+                        </button>
 
-                      </button>
 
-                    } @else {
+                        <!-- DESACTIVAR -->
+                        <button
+                          class="action-btn delete"
+                          type="button"
+                          title="Desactivar laboratorio"
+                          [disabled]="procesandoId !== null"
+                          (click)="eliminarLaboratorio(laboratorio)">
 
-                      <!-- ELIMINAR DEFINITIVAMENTE -->
-                      <button
-                        class="action-btn delete"
-                        type="button"
-                        title="Eliminar definitivamente"
-                        [disabled]="procesandoId !== null"
-                        (click)="eliminarDefinitivamente(laboratorio)">
+                          @if (procesandoId === laboratorio.id) {
+                            <i class="fas fa-spinner fa-spin"></i>
+                          } @else {
+                            <i class="fas fa-ban"></i>
+                          }
 
-                        @if (procesandoId === laboratorio.id) {
-                          <i class="fas fa-spinner fa-spin"></i>
-                        } @else {
-                          <i class="fas fa-trash"></i>
-                        }
+                        </button>
 
-                      </button>
+                      } @else {
 
-                    }
+                        <!-- ELIMINAR DEFINITIVAMENTE -->
+                        <button
+                          class="action-btn delete"
+                          type="button"
+                          title="Eliminar definitivamente"
+                          [disabled]="procesandoId !== null"
+                          (click)="eliminarDefinitivamente(laboratorio)">
 
-                  </div>
+                          @if (procesandoId === laboratorio.id) {
+                            <i class="fas fa-spinner fa-spin"></i>
+                          } @else {
+                            <i class="fas fa-trash"></i>
+                          }
 
-                </td>
+                        </button>
+
+                      }
+
+                    </div>
+
+                  </td>
+
+                }
 
               </tr>
 
@@ -454,11 +509,18 @@
 
               <tr>
 
-                <td colspan="7" class="empty">
+                <td
+                  [attr.colspan]="puedeGestionarLaboratorios ? 7 : 6"
+                  class="empty">
 
                   <i class="fas fa-flask"></i>
 
-                  <p>No se encontraron laboratorios.</p>
+                  <p>
+                    {{ esDocente
+                      ? 'No hay laboratorios disponibles en este momento.'
+                      : 'No se encontraron laboratorios.'
+                    }}
+                  </p>
 
                 </td>
 
@@ -473,6 +535,7 @@
       </div>
 
     }
+
 
     <!-- PIE DE TABLA -->
     <div class="table-footer">

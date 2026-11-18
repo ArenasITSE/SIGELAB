@@ -1,3 +1,4 @@
+
 package sigelab_api.solicitud.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,9 +11,14 @@ import sigelab_api.solicitud.entity.SolicitudLaboratorio;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface SolicitudLaboratorioRepository
         extends JpaRepository<SolicitudLaboratorio, Long> {
+
+    // ==========================================
+    // VALIDAR CONFLICTOS DE HORARIO
+    // ==========================================
 
     @Query("""
         SELECT COUNT(s) > 0
@@ -21,11 +27,8 @@ public interface SolicitudLaboratorioRepository
         AND s.fecha = :fecha
         AND s.estado = sigelab_api.solicitud.entity.EstadoSolicitud.APROBADA
         AND s.id <> :solicitudId
-        AND (
-            s.horaInicio < :horaFin
-            AND
-            s.horaFin > :horaInicio
-        )
+        AND s.horaInicio < :horaFin
+        AND s.horaFin > :horaInicio
     """)
     boolean existsConflictoHorario(
             @Param("laboratorioId") Long laboratorioId,
@@ -41,11 +44,8 @@ public interface SolicitudLaboratorioRepository
         WHERE s.laboratorio.id = :laboratorioId
         AND s.fecha = :fecha
         AND s.estado = sigelab_api.solicitud.entity.EstadoSolicitud.APROBADA
-        AND (
-            s.horaInicio < :horaFin
-            AND
-            s.horaFin > :horaInicio
-        )
+        AND s.horaInicio < :horaFin
+        AND s.horaFin > :horaInicio
     """)
     boolean existsConflictoHorarioCrear(
             @Param("laboratorioId") Long laboratorioId,
@@ -53,6 +53,10 @@ public interface SolicitudLaboratorioRepository
             @Param("horaInicio") LocalTime horaInicio,
             @Param("horaFin") LocalTime horaFin
     );
+
+    // ==========================================
+    // CONSULTAS POR LABORATORIO
+    // ==========================================
 
     List<SolicitudLaboratorio> findByLaboratorioIdAndFechaAndEstado(
             Long laboratorioId,
@@ -72,49 +76,69 @@ public interface SolicitudLaboratorioRepository
             @Param("fecha") LocalDate fecha
     );
 
-    long countByEstado(
-            EstadoSolicitud estado
-    );
+    // ==========================================
+    // CONSULTAS POR USUARIO
+    // ==========================================
 
-    List<SolicitudLaboratorio> findByDocenteId(
-            Long docenteId
-    );
+    List<SolicitudLaboratorio> findByDocenteId(Long docenteId);
 
     long countByDocenteId(Long docenteId);
 
-long countByDocenteIdAndEstado(
-        Long docenteId,
-        EstadoSolicitud estado
-);
+    long countByDocenteIdAndEstado(
+            Long docenteId,
+            EstadoSolicitud estado
+    );
 
-List<SolicitudLaboratorio> findAll();
+    Optional<SolicitudLaboratorio> findByIdAndDocenteId(
+            Long id,
+            Long docenteId
+    );
 
-List<SolicitudLaboratorio> findByFechaBetween(
-        LocalDate fechaInicio,
-        LocalDate fechaFin
-);
-@Query("""
-SELECT s.estado, COUNT(s)
-FROM SolicitudLaboratorio s
-GROUP BY s.estado
-""")
-List<Object[]> contarPorEstado();
+    // ==========================================
+    // CONSULTAS POR CARRERA
+    // ==========================================
 
-@Query("""
-SELECT s.laboratorio.nombre, COUNT(s)
-FROM SolicitudLaboratorio s
-GROUP BY s.laboratorio.nombre
-ORDER BY COUNT(s) DESC
-""")
-List<Object[]> laboratoriosMasUsados();
+    List<SolicitudLaboratorio> findAllByLaboratorio_Carrera_Id(
+            Long carreraId
+    );
 
-@Query("""
-SELECT MONTH(s.fecha), COUNT(s)
-FROM SolicitudLaboratorio s
-GROUP BY MONTH(s.fecha)
-ORDER BY MONTH(s.fecha)
-""")
-List<Object[]> solicitudesPorMes();
+    Optional<SolicitudLaboratorio>
+    findByIdAndLaboratorio_Carrera_Id(
+            Long id,
+            Long carreraId
+    );
 
+    // ==========================================
+    // CONSULTAS GENERALES Y REPORTES
+    // ==========================================
 
+    long countByEstado(EstadoSolicitud estado);
+
+    List<SolicitudLaboratorio> findByFechaBetween(
+            LocalDate fechaInicio,
+            LocalDate fechaFin
+    );
+
+    @Query("""
+        SELECT s.estado, COUNT(s)
+        FROM SolicitudLaboratorio s
+        GROUP BY s.estado
+    """)
+    List<Object[]> contarPorEstado();
+
+    @Query("""
+        SELECT s.laboratorio.nombre, COUNT(s)
+        FROM SolicitudLaboratorio s
+        GROUP BY s.laboratorio.nombre
+        ORDER BY COUNT(s) DESC
+    """)
+    List<Object[]> laboratoriosMasUsados();
+
+    @Query("""
+        SELECT MONTH(s.fecha), COUNT(s)
+        FROM SolicitudLaboratorio s
+        GROUP BY MONTH(s.fecha)
+        ORDER BY MONTH(s.fecha)
+    """)
+    List<Object[]> solicitudesPorMes();
 }

@@ -99,11 +99,15 @@ export class LaboratorioListComponent implements OnInit {
   // INICIALIZACIÓN
   // ==========================================
 
-  ngOnInit(): void {
-    this.listarLaboratorios();
+ngOnInit(): void {
+  this.listarLaboratorios();
+
+  // Los docentes solo consultan laboratorios.
+  // No necesitan cargar usuarios ni carreras.
+  if (this.puedeGestionarLaboratorios) {
     this.cargarCatalogos();
   }
-
+}
   // ==========================================
   // FORMULARIO VACÍO
   // ==========================================
@@ -227,28 +231,21 @@ export class LaboratorioListComponent implements OnInit {
   // ==========================================
   // ACTUALIZAR ARREGLO Y VISTA
   // ==========================================
-
-  private actualizarLaboratorios(data: Laboratorio[]): void {
-
-    if (!Array.isArray(data)) {
-      console.error('La API no devolvió un arreglo válido.');
-      return;
-    }
-
-    this.laboratorios = [...data];
-
-    console.log(
-      'Laboratorios actualizados:',
-      this.laboratorios
-    );
-
-    console.log(
-      'Total de laboratorios:',
-      this.laboratorios.length
-    );
-
-    this.cdr.detectChanges();
+private actualizarLaboratorios(data: Laboratorio[]): void {
+  if (!Array.isArray(data)) {
+    console.error('La API no devolvió un arreglo válido.');
+    return;
   }
+
+  // El docente únicamente visualiza laboratorios disponibles.
+  this.laboratorios = this.esDocente
+    ? data.filter(lab => lab.estatus === 'DISPONIBLE')
+    : [...data];
+
+  console.log('Laboratorios visibles:', this.laboratorios);
+
+  this.cdr.detectChanges();
+}
 
   // ==========================================
   // LISTAR LABORATORIOS
@@ -307,6 +304,14 @@ export class LaboratorioListComponent implements OnInit {
 
   nuevoLaboratorio(): void {
 
+if (!this.puedeGestionarLaboratorios) {
+  this.mostrarMensaje(
+    'No tienes permisos para registrar laboratorios.',
+    'error'
+  );
+  return;
+}
+
     if (this.guardando || this.procesandoId !== null) {
       return;
     }
@@ -337,6 +342,10 @@ export class LaboratorioListComponent implements OnInit {
 
   editarLaboratorio(laboratorio: Laboratorio): void {
 
+
+    if (!this.puedeGestionarLaboratorios) {
+  return;
+}
     if (this.procesandoId !== null || this.guardando) {
       return;
     }
@@ -459,7 +468,12 @@ export class LaboratorioListComponent implements OnInit {
         );
       }
     });
+  if (!this.puedeGestionarLaboratorios) {
+  return;
+}
   }
+
+  
 
   // ==========================================
   // DESACTIVAR LABORATORIO
@@ -540,6 +554,9 @@ export class LaboratorioListComponent implements OnInit {
           );
         }
       });
+      if (!this.puedeGestionarLaboratorios) {
+  return;
+}
   }
 
   // ==========================================
@@ -627,6 +644,9 @@ export class LaboratorioListComponent implements OnInit {
           );
         }
       });
+      if (!this.puedeGestionarLaboratorios) {
+  return;
+}
   }
 
   // ==========================================
@@ -677,5 +697,25 @@ export class LaboratorioListComponent implements OnInit {
 
     return nombres[estatus] ?? estatus;
   }
+
+  get rolUsuario(): string {
+  return (localStorage.getItem('rol') || '').toUpperCase();
+}
+
+get esDocente(): boolean {
+  return (localStorage.getItem('rol') || '').toUpperCase() === 'DOCENTE';
+}
+
+get puedeGestionarLaboratorios(): boolean {
+  const rol = (localStorage.getItem('rol') || '').toUpperCase();
+
+  return rol === 'ADMINISTRADOR' || rol === 'COORDINADOR';
+}
+
+get esAdministrador(): boolean {
+  return this.rolUsuario === 'ADMINISTRADOR';
+}
+
+
 
 }

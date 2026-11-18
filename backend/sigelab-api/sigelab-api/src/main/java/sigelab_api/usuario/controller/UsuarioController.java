@@ -1,12 +1,15 @@
+
 package sigelab_api.usuario.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.MediaType;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import sigelab_api.usuario.dto.UsuarioRequest;
 import sigelab_api.usuario.dto.UsuarioResponse;
@@ -22,32 +25,55 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
 
+    // ==========================================
+    // LISTAR USUARIOS
+    // ==========================================
+
     @GetMapping
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR')")
     public List<UsuarioResponse> listar() {
         return usuarioService.listar();
     }
 
+    // ==========================================
+    // BUSCAR POR ID
+    // ==========================================
+
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR')")
     public UsuarioResponse buscarPorId(@PathVariable Long id) {
         return usuarioService.buscarPorId(id);
     }
 
+    // ==========================================
+    // CREAR USUARIO
+    // ==========================================
+
     @PostMapping
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR')")
     public UsuarioResponse crear(
-            @Valid @RequestBody UsuarioRequest request) {
+            @Valid @RequestBody UsuarioRequest request
+    ) {
         return usuarioService.crear(request);
     }
 
+    // ==========================================
+    // ACTUALIZAR USUARIO
+    // ==========================================
+
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR')")
     public UsuarioResponse actualizar(
             @PathVariable Long id,
-            @Valid @RequestBody UsuarioRequest request) {
+            @Valid @RequestBody UsuarioRequest request
+    ) {
         return usuarioService.actualizar(id, request);
     }
+
+    // ==========================================
+    // ELIMINAR USUARIO
+    // ==========================================
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
@@ -55,26 +81,38 @@ public class UsuarioController {
         usuarioService.eliminar(id);
     }
 
+    // ==========================================
+    // ACTIVAR USUARIO
+    // ==========================================
+
     @PutMapping("/{id}/activar")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR')")
     public UsuarioResponse activar(@PathVariable Long id) {
         return usuarioService.activar(id);
     }
 
+    // ==========================================
+    // DESACTIVAR USUARIO
+    // ==========================================
+
     @PutMapping("/{id}/desactivar")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR')")
     public UsuarioResponse desactivar(@PathVariable Long id) {
         return usuarioService.desactivar(id);
     }
 
-    @PostMapping(
-        value = "/importar-excel",
-        consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResultadoImportacion importarExcel(
-            @RequestParam("archivo") MultipartFile archivo) {
+    // ==========================================
+    // IMPORTAR EXCEL
+    // ==========================================
 
+    @PostMapping(
+            value = "/importar-excel",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR')")
+    public ResultadoImportacion importarExcel(
+            @RequestParam("archivo") MultipartFile archivo
+    ) {
         return usuarioService.importarExcel(archivo);
     }
 }

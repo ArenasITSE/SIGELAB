@@ -1,10 +1,13 @@
 
 package sigelab_api.usuario.entity;
 
+import sigelab_api.carrera.entity.Carrera;
+
 import jakarta.persistence.*;
 import lombok.*;
 
-import sigelab_api.carrera.entity.Carrera;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "usuarios")
@@ -36,7 +39,18 @@ public class Usuario {
     @Builder.Default
     private Boolean activo = true;
 
+    // Carrera principal: se conserva por compatibilidad
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "carrera_id")
     private Carrera carrera;
+
+    // Carreras adicionales asignadas al docente
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "usuario_carrera",
+        joinColumns = @JoinColumn(name = "usuario_id"),
+        inverseJoinColumns = @JoinColumn(name = "carrera_id")
+    )
+    @Builder.Default
+    private Set<Carrera> carreras = new HashSet<>();
 }

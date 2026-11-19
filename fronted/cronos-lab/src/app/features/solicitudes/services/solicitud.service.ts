@@ -20,15 +20,27 @@ export class SolicitudService {
 
   private apiUrl = `${environment.apiUrl}/solicitudes`;
 
+  // ==========================================
+  // LISTAR SOLICITUDES
+  // ==========================================
+
   listar(): Observable<SolicitudLaboratorio[]> {
     return this.http.get<SolicitudLaboratorio[]>(this.apiUrl);
   }
+
+  // ==========================================
+  // BUSCAR SOLICITUD POR ID
+  // ==========================================
 
   buscarPorId(id: number): Observable<SolicitudLaboratorio> {
     return this.http.get<SolicitudLaboratorio>(
       `${this.apiUrl}/${id}`
     );
   }
+
+  // ==========================================
+  // CREAR SOLICITUD
+  // ==========================================
 
   crear(request: SolicitudRequest): Observable<SolicitudLaboratorio> {
     return this.http.post<SolicitudLaboratorio>(
@@ -37,12 +49,20 @@ export class SolicitudService {
     );
   }
 
+  // ==========================================
+  // AUTORIZAR SOLICITUD
+  // ==========================================
+
   autorizar(id: number): Observable<void> {
     return this.http.patch<void>(
       `${this.apiUrl}/${id}/autorizar`,
       {}
     );
   }
+
+  // ==========================================
+  // RECHAZAR SOLICITUD
+  // ==========================================
 
   rechazar(
     id: number,
@@ -53,4 +73,5 @@ export class SolicitudService {
       request
     );
   }
+
 }

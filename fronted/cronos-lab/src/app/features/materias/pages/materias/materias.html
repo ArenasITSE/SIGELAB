@@ -1,0 +1,366 @@
+
+<div class="materias-container">
+
+  <!-- ENCABEZADO -->
+  <div class="page-header">
+
+    <div>
+      <h1>Materias</h1>
+      <p>Administración de las materias académicas</p>
+    </div>
+
+    <button
+      type="button"
+      class="btn-primary"
+      (click)="nuevaMateria()">
+      + Nueva materia
+    </button>
+
+  </div>
+
+  <!-- MENSAJES -->
+  <div class="alert success" *ngIf="mensaje">
+    {{ mensaje }}
+  </div>
+
+  <div class="alert error" *ngIf="error">
+    {{ error }}
+  </div>
+
+  <!-- LISTADO -->
+  <div class="content-card">
+
+    <div class="table-header">
+      <div>
+        <h2>Listado de materias</h2>
+
+        <span>
+          {{ materias.length }}
+          {{ materias.length === 1 ? 'materia registrada' : 'materias registradas' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- CARGANDO -->
+    <div class="loading" *ngIf="cargando">
+      Cargando información...
+    </div>
+
+    <!-- TABLA -->
+    <div class="table-responsive" *ngIf="!cargando">
+
+      <table>
+
+        <thead>
+          <tr>
+            <th>Clave</th>
+            <th>Nombre</th>
+            <th>Semestre</th>
+            <th>Horas por semana</th>
+            <th>Carrera</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          <tr *ngFor="let materia of materias">
+
+            <td class="clave">
+              {{ materia.clave }}
+            </td>
+
+            <td>
+              {{ materia.nombre }}
+            </td>
+
+            <td>
+              {{ materia.semestre }}°
+            </td>
+
+            <td>
+              {{ materia.horasSemana }} horas
+            </td>
+
+            <td>
+              {{ materia.carrera }}
+            </td>
+
+            <td>
+              <span
+                class="status"
+                [class.active]="materia.activo"
+                [class.inactive]="!materia.activo">
+
+                {{ materia.activo ? 'Activa' : 'Inactiva' }}
+
+              </span>
+            </td>
+
+            <!-- ACCIONES -->
+            <td>
+              <div class="actions">
+
+                <button
+                  type="button"
+                  class="btn-edit"
+                  (click)="editarMateria(materia)">
+                  Editar
+                </button>
+
+                <!-- DESACTIVAR -->
+                <button
+                  type="button"
+                  class="btn-delete"
+                  *ngIf="materia.activo"
+                  (click)="eliminarMateria(materia)">
+                  Desactivar
+                </button>
+
+                <!-- ACTIVAR -->
+                <button
+                  type="button"
+                  class="btn-activate"
+                  *ngIf="!materia.activo"
+                  (click)="activarMateria(materia)">
+                  Activar
+                </button>
+
+              </div>
+            </td>
+
+          </tr>
+
+          <!-- SIN REGISTROS -->
+          <tr *ngIf="materias.length === 0">
+
+            <td colspan="7" class="empty">
+              No hay materias registradas.
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+  <!-- =====================================
+       MODAL DE MATERIA
+  ====================================== -->
+
+  <div
+    class="materia-modal-overlay"
+    *ngIf="mostrarFormulario"
+    (click)="cerrarFormulario()">
+
+    <div
+      class="materia-modal"
+      (click)="$event.stopPropagation()">
+
+      <!-- ENCABEZADO DEL MODAL -->
+      <div class="modal-header">
+
+        <div>
+          <h2>
+            {{ editando ? 'Editar materia' : 'Nueva materia' }}
+          </h2>
+
+          <p>Completa la información académica</p>
+        </div>
+
+        <button
+          type="button"
+          class="close-btn"
+          (click)="cerrarFormulario()">
+          ×
+        </button>
+
+      </div>
+
+      <!-- FORMULARIO -->
+      <form
+        #materiaForm="ngForm"
+        (ngSubmit)="guardarMateria()">
+
+        <!-- CLAVE -->
+        <div class="form-group">
+
+          <label for="clave">
+            Clave de la materia
+          </label>
+
+          <input
+            id="clave"
+            type="text"
+            name="clave"
+            [(ngModel)]="formulario.clave"
+            placeholder="Ej. GSH-1007"
+            maxlength="30"
+            required>
+
+        </div>
+
+        <!-- NOMBRE -->
+        <div class="form-group">
+
+          <label for="nombre">
+            Nombre de la materia
+          </label>
+
+          <input
+            id="nombre"
+            type="text"
+            name="nombre"
+            [(ngModel)]="formulario.nombre"
+            placeholder="Nombre de la materia"
+            maxlength="150"
+            required>
+
+        </div>
+
+        <!-- SEMESTRE Y HORAS -->
+        <div class="form-row">
+
+          <div class="form-group">
+
+            <label for="semestre">
+              Semestre
+            </label>
+
+            <select
+              id="semestre"
+              name="semestre"
+              [(ngModel)]="formulario.semestre"
+              required>
+
+              <option
+                *ngFor="let semestre of [1,2,3,4,5,6,7,8,9]"
+                [ngValue]="semestre">
+
+                {{ semestre }}°
+
+              </option>
+
+            </select>
+
+          </div>
+
+          <div class="form-group">
+
+            <label for="horasSemana">
+              Horas por semana
+            </label>
+
+            <input
+              id="horasSemana"
+              type="number"
+              name="horasSemana"
+              [(ngModel)]="formulario.horasSemana"
+              min="1"
+              required>
+
+          </div>
+
+        </div>
+
+        <!-- CARRERA DEL ADMINISTRADOR -->
+        <div
+          class="form-group"
+          *ngIf="rol === 'ADMINISTRADOR'">
+
+          <label for="carreraId">
+            Carrera académica
+          </label>
+
+          <select
+            id="carreraId"
+            name="carreraId"
+            [(ngModel)]="formulario.carreraId"
+            [disabled]="cargandoCarreras || carreras.length === 0"
+            required>
+
+            <option
+              [ngValue]="undefined"
+              disabled>
+              {{
+                cargandoCarreras
+                  ? 'Cargando carreras...'
+                  : 'Selecciona una carrera'
+              }}
+            </option>
+
+            <option
+              *ngFor="let carrera of carreras"
+              [ngValue]="carrera.id">
+
+              {{ carrera.nombre }}
+
+            </option>
+
+          </select>
+
+          <small>
+            Selecciona la carrera a la que pertenece esta materia.
+          </small>
+
+        </div>
+
+        <!-- CARRERA DEL COORDINADOR -->
+        <div
+          class="form-group"
+          *ngIf="rol === 'COORDINADOR'">
+
+          <label>Carrera asignada</label>
+
+          <input
+            type="text"
+            value="Carrera asociada a tu cuenta"
+            disabled>
+
+          <small>
+            La materia se registrará en la carrera que tienes asignada.
+          </small>
+
+        </div>
+
+        <!-- BOTONES -->
+        <div class="modal-actions">
+
+          <button
+            type="button"
+            class="btn-secondary"
+            (click)="cerrarFormulario()">
+
+            Cancelar
+
+          </button>
+
+          <button
+            type="submit"
+            class="btn-primary"
+            [disabled]="guardando || materiaForm.invalid">
+
+            {{
+              guardando
+                ? 'Guardando...'
+                : editando
+                  ? 'Guardar cambios'
+                  : 'Registrar materia'
+            }}
+
+          </button>
+
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+
+</div>

@@ -7,7 +7,8 @@ import { environment } from '../../../environments/environment';
 
 import {
   Usuario,
-  UsuarioRequest
+  UsuarioRequest,
+  CarreraOption
 } from '../models/usuario.model';
 
 // ==========================================
@@ -106,6 +107,16 @@ export class UsuarioService {
     return this.http.post<ResultadoImportacion>(
       `${this.apiUrl}/importar-excel`,
       formData
+    );
+  }
+
+  // ==========================================
+  // OBTENER CARRERAS DEL DOCENTE AUTENTICADO
+  // ==========================================
+
+  misCarreras(): Observable<CarreraOption[]> {
+    return this.http.get<CarreraOption[]>(
+      `${this.apiUrl}/mis-carreras`
     );
   }
 

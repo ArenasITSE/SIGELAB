@@ -31,6 +31,7 @@ export interface SolicitudLaboratorio {
 }
 
 export interface SolicitudRequest {
+  materiaId: number;
   laboratorioId: number;
   fecha: string;
   horaInicio: string;
@@ -38,7 +39,6 @@ export interface SolicitudRequest {
   numeroPersonas: number;
   motivo: string;
 }
-
 export interface RechazoSolicitudRequest {
   observaciones: string;
 }

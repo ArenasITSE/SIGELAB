@@ -105,31 +105,40 @@ public class LaboratorioServiceImpl implements LaboratorioService {
     // LISTAR LABORATORIOS
     // ==========================================
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<LaboratorioResponse> listar() {
+@Override
+@Transactional(readOnly = true)
+public List<LaboratorioResponse> listar() {
 
-        Usuario usuario = usuarioAutenticado.obtenerUsuario();
+    Usuario usuario = usuarioAutenticado.obtenerUsuario();
 
-        List<Laboratorio> laboratorios;
+    List<Laboratorio> laboratorios;
 
-        if (usuario.getRol().name().equals("ADMINISTRADOR")) {
+    // El administrador consulta todos los laboratorios.
+    if (usuario.getRol().name().equals("ADMINISTRADOR")) {
 
-            laboratorios = laboratorioRepository.findAll();
+        laboratorios = laboratorioRepository.findAll();
 
-        } else {
+    } else {
 
-            Long carreraId = usuarioAutenticado.obtenerCarreraId();
+        // Coordinadores y docentes necesitan tener una carrera asignada.
+        Long carreraId = usuarioAutenticado.obtenerCarreraId();
 
-            laboratorios = laboratorioRepository
-                    .findAllByCarrera_Id(carreraId);
+        laboratorios = laboratorioRepository
+                .findAllByCarrera_Id(carreraId);
+
+        // El docente solamente puede consultar laboratorios disponibles.
+        if (usuario.getRol().name().equals("DOCENTE")) {
+
+            laboratorios = laboratorios.stream()
+                    .filter(lab -> lab.getEstatus() == EstatusLaboratorio.DISPONIBLE)
+                    .toList();
         }
-
-        return laboratorios.stream()
-                .map(this::mapToResponse)
-                .toList();
     }
 
+    return laboratorios.stream()
+            .map(this::mapToResponse)
+            .toList();
+}
     // ==========================================
     // BUSCAR LABORATORIO POR ID
     // ==========================================

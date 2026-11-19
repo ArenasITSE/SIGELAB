@@ -38,8 +38,12 @@
 
     {{ mensaje }}
 
-    <button type="button" (click)="mensaje = ''">
+    <button
+      type="button"
+      (click)="mensaje = ''">
+
       <i class="fas fa-times"></i>
+
     </button>
 
   </div>
@@ -156,31 +160,39 @@
           type="button"
           [class.active]="filtroEstatus === 'TODOS'"
           (click)="cambiarFiltro('TODOS')">
+
           Todos
+
         </button>
 
         <button
           type="button"
           [class.active]="filtroEstatus === 'AUTORIZADA'"
           (click)="cambiarFiltro('AUTORIZADA')">
+
           <span class="legend-dot green"></span>
           Autorizadas
+
         </button>
 
         <button
           type="button"
           [class.active]="filtroEstatus === 'PENDIENTE'"
           (click)="cambiarFiltro('PENDIENTE')">
+
           <span class="legend-dot orange"></span>
           Pendientes
+
         </button>
 
         <button
           type="button"
           [class.active]="filtroEstatus === 'RECHAZADA'"
           (click)="cambiarFiltro('RECHAZADA')">
+
           <span class="legend-dot red"></span>
           Rechazadas
+
         </button>
 
       </div>
@@ -306,6 +318,7 @@
 
           <div class="event-content">
 
+            <!-- HORARIO -->
             <div class="event-time">
 
               <i class="far fa-clock"></i>
@@ -314,17 +327,35 @@
 
             </div>
 
+            <!-- LABORATORIO -->
             <h3>{{ solicitud.laboratorio }}</h3>
 
+            <!-- DOCENTE -->
             <p class="event-teacher">
 
               <i class="fas fa-user"></i>
 
-              {{ solicitud.solicitante }}
+              <strong>Docente:</strong>
+
+              {{ solicitud.solicitante || 'No especificado' }}
 
             </p>
 
-            <p class="event-career" *ngIf="solicitud.carrera">
+            <!-- MATERIA -->
+            <p class="event-subject">
+
+              <i class="fas fa-book"></i>
+
+              <strong>Materia:</strong>
+
+              {{ solicitud.materia || 'No especificada' }}
+
+            </p>
+
+            <!-- CARRERA -->
+            <p
+              class="event-career"
+              *ngIf="solicitud.carrera">
 
               <i class="fas fa-graduation-cap"></i>
 
@@ -332,10 +363,12 @@
 
             </p>
 
+            <!-- MOTIVO -->
             <p class="event-reason">
               {{ solicitud.motivo }}
             </p>
 
+            <!-- ESTADO Y PERSONAS -->
             <div class="event-footer">
 
               <span
@@ -347,12 +380,16 @@
               </span>
 
               <span class="people">
+
                 <i class="fas fa-users"></i>
+
                 {{ solicitud.numeroPersonas }} personas
+
               </span>
 
             </div>
 
+            <!-- OBSERVACIONES -->
             <p
               class="observations"
               *ngIf="solicitud.observaciones">

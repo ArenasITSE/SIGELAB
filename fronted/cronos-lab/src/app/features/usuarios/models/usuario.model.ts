@@ -1,4 +1,3 @@
-
 export type RolUsuario =
   | 'ADMINISTRADOR'
   | 'COORDINADOR'
@@ -12,8 +11,13 @@ export interface Usuario {
   rol: RolUsuario;
   activo: boolean;
 
+  // Carrera principal, para compatibilidad.
   carreraId: number | null;
   carrera: string | null;
+
+  // Carreras adicionales del docente.
+  carreraIds?: number[];
+  carreras?: string[];
 }
 
 export interface UsuarioRequest {
@@ -21,7 +25,12 @@ export interface UsuarioRequest {
   correo: string;
   password?: string;
   rol: RolUsuario;
+
+  // Se conserva para los roles con una sola carrera.
   carreraId: number | null;
+
+  // Se utiliza cuando el usuario es DOCENTE.
+  carreraIds?: number[];
 }
 
 export interface CarreraOption {

@@ -1,11 +1,13 @@
 
 package sigelab_api.usuario.dto;
 
+import sigelab_api.usuario.entity.Rol;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
-import sigelab_api.usuario.entity.Rol;
+import java.util.List;
 
 public record UsuarioRequest(
 
@@ -21,6 +23,10 @@ public record UsuarioRequest(
     @NotNull(message = "El rol es obligatorio")
     Rol rol,
 
-    Long carreraId
+    // Se conserva para coordinadores, técnicos y administradores
+    Long carreraId,
+
+    // Se utiliza para asignar varias carreras a docentes
+    List<Long> carreraIds
 
 ) {}

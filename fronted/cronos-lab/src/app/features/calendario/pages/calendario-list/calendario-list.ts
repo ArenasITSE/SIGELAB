@@ -14,7 +14,25 @@ import {
   EstatusSolicitud
 } from '../../../solicitudes/models/solicitud.model';
 
-import { SolicitudService } from '../../../solicitudes/services/solicitud.service';
+import {
+  SolicitudService
+} from '../../../solicitudes/services/solicitud.service';
+
+// ==========================================
+// TIPOS
+// ==========================================
+
+interface SolicitudCalendario extends SolicitudLaboratorio {
+  materia?: string | null;
+}
+
+interface SolicitudCalendarioApi extends Partial<SolicitudLaboratorio> {
+  materia?: string | null;
+  nombreMateria?: string | null;
+  docente?: string | null;
+  nombreDocente?: string | null;
+  estado?: string | null;
+}
 
 interface DiaCalendario {
   fecha: Date;
@@ -23,8 +41,12 @@ interface DiaCalendario {
   perteneceMes: boolean;
   esHoy: boolean;
   seleccionado: boolean;
-  solicitudes: SolicitudLaboratorio[];
+  solicitudes: SolicitudCalendario[];
 }
+
+// ==========================================
+// COMPONENTE
+// ==========================================
 
 @Component({
   selector: 'app-calendario-list',
@@ -42,11 +64,11 @@ export class CalendarioListComponent implements OnInit {
   // DATOS
   // ==========================================
 
-  solicitudes: SolicitudLaboratorio[] = [];
+  solicitudes: SolicitudCalendario[] = [];
 
   calendarDays: DiaCalendario[] = [];
 
-  solicitudesDelDia: SolicitudLaboratorio[] = [];
+  solicitudesDelDia: SolicitudCalendario[] = [];
 
   // ==========================================
   // FECHAS
@@ -79,6 +101,7 @@ export class CalendarioListComponent implements OnInit {
   cargando = false;
 
   mensaje = '';
+
   tipoMensaje: 'success' | 'error' = 'success';
 
   // ==========================================
@@ -100,10 +123,12 @@ export class CalendarioListComponent implements OnInit {
   // ==========================================
 
   get nombreMes(): string {
-    return this.fechaActual.toLocaleDateString('es-MX', {
+    const nombre = this.fechaActual.toLocaleDateString('es-MX', {
       month: 'long',
       year: 'numeric'
     });
+
+    return nombre.charAt(0).toUpperCase() + nombre.slice(1);
   }
 
   // ==========================================
@@ -116,19 +141,19 @@ export class CalendarioListComponent implements OnInit {
 
   get totalAutorizadas(): number {
     return this.solicitudes.filter(
-      s => s.estatus === 'AUTORIZADA'
+      solicitud => solicitud.estatus === 'AUTORIZADA'
     ).length;
   }
 
   get totalPendientes(): number {
     return this.solicitudes.filter(
-      s => s.estatus === 'PENDIENTE'
+      solicitud => solicitud.estatus === 'PENDIENTE'
     ).length;
   }
 
   get totalRechazadas(): number {
     return this.solicitudes.filter(
-      s => s.estatus === 'RECHAZADA'
+      solicitud => solicitud.estatus === 'RECHAZADA'
     ).length;
   }
 
@@ -138,6 +163,73 @@ export class CalendarioListComponent implements OnInit {
 
   ngOnInit(): void {
     this.cargarSolicitudes();
+  }
+
+  // ==========================================
+  // NORMALIZAR RESPUESTA
+  // ==========================================
+
+  private normalizarSolicitud(
+    solicitud: SolicitudCalendarioApi
+  ): SolicitudCalendario {
+
+    const estadoRecibido = (
+      solicitud.estatus ??
+      solicitud.estado ??
+      'PENDIENTE'
+    ).toUpperCase();
+
+    let estatus: EstatusSolicitud;
+
+    switch (estadoRecibido) {
+      case 'APROBADA':
+      case 'AUTORIZADA':
+        estatus = 'AUTORIZADA';
+        break;
+
+      case 'RECHAZADA':
+        estatus = 'RECHAZADA';
+        break;
+
+      default:
+        estatus = 'PENDIENTE';
+        break;
+    }
+
+    return {
+      ...solicitud,
+
+      id: Number(solicitud.id ?? 0),
+
+      solicitante:
+        solicitud.solicitante ??
+        solicitud.docente ??
+        solicitud.nombreDocente ??
+        'Docente no especificado',
+
+      materia:
+        solicitud.materia ??
+        solicitud.nombreMateria ??
+        null,
+
+      laboratorio: solicitud.laboratorio ?? '',
+
+      carrera: solicitud.carrera ?? '',
+
+      fecha: solicitud.fecha ?? '',
+
+      horaInicio: solicitud.horaInicio ?? '',
+
+      horaFin: solicitud.horaFin ?? '',
+
+      motivo: solicitud.motivo ?? '',
+
+      numeroPersonas: Number(solicitud.numeroPersonas ?? 0),
+
+      estatus,
+
+      observaciones: solicitud.observaciones ?? null
+    } as SolicitudCalendario;
   }
 
   // ==========================================
@@ -151,7 +243,7 @@ export class CalendarioListComponent implements OnInit {
 
     this.solicitudService.listar()
       .pipe(
-        timeout(10000),
+        timeout({ first: 10000 }),
         finalize(() => {
           this.cargando = false;
           this.cdr.detectChanges();
@@ -159,13 +251,17 @@ export class CalendarioListComponent implements OnInit {
       )
       .subscribe({
 
-        next: (respuesta: SolicitudLaboratorio[]) => {
+        next: respuesta => {
 
           console.log('Solicitudes recibidas:', respuesta);
 
-          this.solicitudes = Array.isArray(respuesta)
-            ? respuesta
+          const datos = Array.isArray(respuesta)
+            ? respuesta as SolicitudCalendarioApi[]
             : [];
+
+          this.solicitudes = datos.map(
+            solicitud => this.normalizarSolicitud(solicitud)
+          );
 
           this.generarCalendario();
 
@@ -174,9 +270,12 @@ export class CalendarioListComponent implements OnInit {
           this.cdr.detectChanges();
         },
 
-        error: (error) => {
+        error: error => {
 
-          console.error('Error al consultar solicitudes:', error);
+          console.error(
+            'Error al consultar solicitudes:',
+            error
+          );
 
           this.solicitudes = [];
           this.calendarDays = [];
@@ -236,10 +335,14 @@ export class CalendarioListComponent implements OnInit {
 
     const primerDia = new Date(anio, mes, 1);
 
-    // Semana iniciando en lunes
+    // Semana iniciando en lunes.
     const desplazamiento = (primerDia.getDay() + 6) % 7;
 
-    const inicio = new Date(anio, mes, 1 - desplazamiento);
+    const inicio = new Date(
+      anio,
+      mes,
+      1 - desplazamiento
+    );
 
     const dias: DiaCalendario[] = [];
 
@@ -254,8 +357,13 @@ export class CalendarioListComponent implements OnInit {
       const fechaKey = this.formatearFecha(fecha);
 
       const solicitudes = this.solicitudes
-        .filter(s => this.obtenerFechaKey(s.fecha) === fechaKey)
-        .filter(s => this.cumpleFiltro(s));
+        .filter(
+          solicitud =>
+            this.obtenerFechaKey(solicitud.fecha) === fechaKey
+        )
+        .filter(
+          solicitud => this.cumpleFiltro(solicitud)
+        );
 
       dias.push({
 
@@ -323,6 +431,7 @@ export class CalendarioListComponent implements OnInit {
     );
 
     this.generarCalendario();
+
     this.actualizarSolicitudesDelDia();
   }
 
@@ -348,6 +457,7 @@ export class CalendarioListComponent implements OnInit {
     }
 
     this.generarCalendario();
+
     this.actualizarSolicitudesDelDia();
   }
 
@@ -362,10 +472,16 @@ export class CalendarioListComponent implements OnInit {
     );
 
     this.solicitudesDelDia = this.solicitudes
-      .filter(s => this.obtenerFechaKey(s.fecha) === fechaKey)
-      .filter(s => this.cumpleFiltro(s))
-      .sort((a, b) =>
-        a.horaInicio.localeCompare(b.horaInicio)
+      .filter(
+        solicitud =>
+          this.obtenerFechaKey(solicitud.fecha) === fechaKey
+      )
+      .filter(
+        solicitud => this.cumpleFiltro(solicitud)
+      )
+      .sort(
+        (a, b) =>
+          (a.horaInicio ?? '').localeCompare(b.horaInicio ?? '')
       );
   }
 
@@ -388,11 +504,12 @@ export class CalendarioListComponent implements OnInit {
     this.filtroEstatus = estatus;
 
     this.generarCalendario();
+
     this.actualizarSolicitudesDelDia();
   }
 
   private cumpleFiltro(
-    solicitud: SolicitudLaboratorio
+    solicitud: SolicitudCalendario
   ): boolean {
 
     return this.filtroEstatus === 'TODOS' ||
@@ -406,15 +523,23 @@ export class CalendarioListComponent implements OnInit {
   private formatearFecha(fecha: Date): string {
 
     const anio = fecha.getFullYear();
-    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-    const dia = String(fecha.getDate()).padStart(2, '0');
+
+    const mes = String(
+      fecha.getMonth() + 1
+    ).padStart(2, '0');
+
+    const dia = String(
+      fecha.getDate()
+    ).padStart(2, '0');
 
     return `${anio}-${mes}-${dia}`;
   }
 
   private obtenerFechaKey(fecha: string): string {
 
-    if (!fecha) return '';
+    if (!fecha) {
+      return '';
+    }
 
     // Evita desfases de zona horaria al recibir YYYY-MM-DD.
     return fecha.substring(0, 10);
@@ -424,7 +549,9 @@ export class CalendarioListComponent implements OnInit {
   // CLASES Y ESTATUS
   // ==========================================
 
-  obtenerClaseEstatus(estatus: EstatusSolicitud): string {
+  obtenerClaseEstatus(
+    estatus: EstatusSolicitud
+  ): string {
 
     switch (estatus) {
 

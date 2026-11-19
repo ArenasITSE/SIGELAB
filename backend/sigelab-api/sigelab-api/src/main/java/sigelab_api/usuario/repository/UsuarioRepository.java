@@ -16,35 +16,23 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     Optional<Usuario> findByCorreo(String correo);
 
-    @EntityGraph(attributePaths = {"carrera"})
+    @EntityGraph(attributePaths = {"carrera", "carreras"})
     Optional<Usuario> findWithCarreraByCorreo(String correo);
 
     boolean existsByCorreo(String correo);
 
     long countByRol(Rol rol);
 
-    /**
-     * Buscar usuario por ID incluyendo su carrera.
-     */
-    @EntityGraph(attributePaths = {"carrera"})
+    @EntityGraph(attributePaths = {"carrera", "carreras"})
     Optional<Usuario> findWithCarreraById(Long id);
 
-    /**
-     * Listar usuarios de una carrera.
-     */
-    @EntityGraph(attributePaths = {"carrera"})
+    @EntityGraph(attributePaths = {"carrera", "carreras"})
     List<Usuario> findAllByCarrera_Id(Long carreraId);
 
-    /**
-     * Buscar usuario por ID y carrera.
-     */
-    @EntityGraph(attributePaths = {"carrera"})
+    @EntityGraph(attributePaths = {"carrera", "carreras"})
     Optional<Usuario> findByIdAndCarrera_Id(Long id, Long carreraId);
 
-    /**
-     * Obtener todos los usuarios incluyendo su carrera.
-     */
     @Override
-    @EntityGraph(attributePaths = {"carrera"})
+    @EntityGraph(attributePaths = {"carrera", "carreras"})
     List<Usuario> findAll();
 }

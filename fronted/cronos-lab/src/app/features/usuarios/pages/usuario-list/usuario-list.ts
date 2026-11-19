@@ -113,15 +113,17 @@ export class UsuarioListComponent implements OnInit {
   // FORMULARIO VACÍO
   // ==========================================
 
-  formularioVacio(): UsuarioRequest {
-    return {
-      nombre: '',
-      correo: '',
-      password: '',
-      rol: 'DOCENTE',
-      carreraId: null
-    };
-  }
+ 
+formularioVacio(): UsuarioRequest {
+  return {
+    nombre: '',
+    correo: '',
+    password: '',
+    rol: 'DOCENTE',
+    carreraId: null,
+    carreraIds: []
+  };
+}
 
   // ==========================================
   // CARGAR CARRERAS
@@ -292,159 +294,178 @@ export class UsuarioListComponent implements OnInit {
   // ==========================================
   // EDITAR USUARIO
   // ==========================================
+editarUsuario(usuario: Usuario): void {
 
-  editarUsuario(usuario: Usuario): void {
-
-    if (this.guardando || this.procesandoId !== null) {
-      return;
-    }
-
-    this.formulario = {
-      nombre: usuario.nombre,
-      correo: usuario.correo,
-      password: '',
-      rol: usuario.rol,
-      carreraId: usuario.carreraId ?? null
-    };
-
-    this.usuarioId = usuario.id;
-    this.editando = true;
-    this.mostrarPassword = false;
-    this.mostrarFormulario = true;
-    this.mensaje = '';
+  if (this.guardando || this.procesandoId !== null) {
+    return;
   }
+
+  const carreraIds = usuario.carreraIds?.length
+    ? [...usuario.carreraIds]
+    : usuario.carreraId !== null
+      ? [usuario.carreraId]
+      : [];
+
+  this.formulario = {
+    nombre: usuario.nombre,
+    correo: usuario.correo,
+    password: '',
+    rol: usuario.rol,
+    carreraId: usuario.carreraId ?? null,
+    carreraIds
+  };
+
+  this.usuarioId = usuario.id;
+  this.editando = true;
+  this.mostrarPassword = false;
+  this.mostrarFormulario = true;
+  this.mensaje = '';
+}
 
   // ==========================================
   // GUARDAR USUARIO
   // ==========================================
+guardarUsuario(): void {
 
-  guardarUsuario(): void {
-
-    if (this.guardando || this.procesandoId !== null) {
-      return;
-    }
-
-    if (
-      !this.formulario.nombre.trim() ||
-      !this.formulario.correo.trim() ||
-      !this.formulario.rol ||
-      this.formulario.carreraId === null
-    ) {
-      this.mostrarMensaje(
-        'Completa todos los campos obligatorios, incluida la carrera.',
-        'error'
-      );
-      return;
-    }
-
-    const correoValido =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-        this.formulario.correo.trim()
-      );
-
-    if (!correoValido) {
-      this.mostrarMensaje(
-        'Ingresa un correo electrónico válido.',
-        'error'
-      );
-      return;
-    }
-
-    if (
-      !this.editando &&
-      !this.formulario.password?.trim()
-    ) {
-      this.mostrarMensaje(
-        'La contraseña es obligatoria para registrar un usuario.',
-        'error'
-      );
-      return;
-    }
-
-    if (
-      this.formulario.password?.trim() &&
-      this.formulario.password.length < 8
-    ) {
-      this.mostrarMensaje(
-        'La contraseña debe tener al menos 8 caracteres.',
-        'error'
-      );
-      return;
-    }
-
-    this.guardando = true;
-
-    const esEdicion =
-      this.editando && this.usuarioId !== null;
-
-    const request: UsuarioRequest = {
-      nombre: this.formulario.nombre.trim(),
-      correo: this.formulario.correo.trim(),
-      rol: this.formulario.rol,
-      carreraId: this.formulario.carreraId
-    };
-
-    if (this.formulario.password?.trim()) {
-      request.password = this.formulario.password;
-    }
-
-    const operacion = esEdicion
-      ? this.usuarioService.actualizar(
-          this.usuarioId!,
-          request
-        )
-      : this.usuarioService.crear(request);
-
-    operacion.pipe(
-      switchMap(() => this.usuarioService.listar()),
-      timeout({ first: 10000 }),
-      finalize(() => {
-        this.guardando = false;
-        this.cdr.detectChanges();
-      })
-    ).subscribe({
-
-      next: (data) => {
-
-        if (!Array.isArray(data)) {
-          this.mostrarMensaje(
-            'No se pudo actualizar el listado.',
-            'error'
-          );
-          return;
-        }
-
-        this.usuarios = [...data];
-
-        this.mostrarFormulario = false;
-        this.formulario = this.formularioVacio();
-        this.usuarioId = null;
-        this.editando = false;
-        this.mostrarPassword = false;
-        this.busqueda = '';
-        this.filtroRol = '';
-
-        this.mostrarMensaje(
-          esEdicion
-            ? 'Usuario actualizado correctamente.'
-            : 'Usuario registrado correctamente.',
-          'success'
-        );
-      },
-
-      error: (error) => {
-
-        console.error('Error al guardar usuario:', error);
-
-        this.mostrarMensaje(
-          error.error?.message ||
-          'No fue posible guardar el usuario.',
-          'error'
-        );
-      }
-    });
+  if (this.guardando || this.procesandoId !== null) {
+    return;
   }
 
+  const esDocente = this.formulario.rol === 'DOCENTE';
+
+  const carrerasSeleccionadas = esDocente
+    ? [...new Set(this.formulario.carreraIds ?? [])]
+    : this.formulario.carreraId !== null
+      ? [this.formulario.carreraId]
+      : [];
+
+  if (
+    !this.formulario.nombre.trim() ||
+    !this.formulario.correo.trim() ||
+    !this.formulario.rol ||
+    carrerasSeleccionadas.length === 0
+  ) {
+    this.mostrarMensaje(
+      esDocente
+        ? 'Completa los campos obligatorios y selecciona al menos una carrera para el docente.'
+        : 'Completa todos los campos obligatorios, incluida la carrera.',
+      'error'
+    );
+    return;
+  }
+
+  const correoValido =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+      this.formulario.correo.trim()
+    );
+
+  if (!correoValido) {
+    this.mostrarMensaje(
+      'Ingresa un correo electrónico válido.',
+      'error'
+    );
+    return;
+  }
+
+  if (
+    !this.editando &&
+    !this.formulario.password?.trim()
+  ) {
+    this.mostrarMensaje(
+      'La contraseña es obligatoria para registrar un usuario.',
+      'error'
+    );
+    return;
+  }
+
+  if (
+    this.formulario.password?.trim() &&
+    this.formulario.password.length < 8
+  ) {
+    this.mostrarMensaje(
+      'La contraseña debe tener al menos 8 caracteres.',
+      'error'
+    );
+    return;
+  }
+
+  this.guardando = true;
+
+  const esEdicion =
+    this.editando && this.usuarioId !== null;
+
+  const request: UsuarioRequest = {
+    nombre: this.formulario.nombre.trim(),
+    correo: this.formulario.correo.trim(),
+    rol: this.formulario.rol,
+
+    // Se conserva la primera carrera como principal.
+    carreraId: carrerasSeleccionadas[0],
+
+    // Para docentes se envían todas las carreras.
+    carreraIds: esDocente ? carrerasSeleccionadas : undefined
+  };
+
+  if (this.formulario.password?.trim()) {
+    request.password = this.formulario.password;
+  }
+
+  const operacion = esEdicion
+    ? this.usuarioService.actualizar(
+        this.usuarioId!,
+        request
+      )
+    : this.usuarioService.crear(request);
+
+  operacion.pipe(
+    switchMap(() => this.usuarioService.listar()),
+    timeout({ first: 10000 }),
+    finalize(() => {
+      this.guardando = false;
+      this.cdr.detectChanges();
+    })
+  ).subscribe({
+
+    next: (data) => {
+
+      if (!Array.isArray(data)) {
+        this.mostrarMensaje(
+          'No se pudo actualizar el listado.',
+          'error'
+        );
+        return;
+      }
+
+      this.usuarios = [...data];
+
+      this.mostrarFormulario = false;
+      this.formulario = this.formularioVacio();
+      this.usuarioId = null;
+      this.editando = false;
+      this.mostrarPassword = false;
+      this.busqueda = '';
+      this.filtroRol = '';
+
+      this.mostrarMensaje(
+        esEdicion
+          ? 'Usuario actualizado correctamente.'
+          : 'Usuario registrado correctamente.',
+        'success'
+      );
+    },
+
+    error: (error) => {
+
+      console.error('Error al guardar usuario:', error);
+
+      this.mostrarMensaje(
+        error.error?.message ||
+        'No fue posible guardar el usuario.',
+        'error'
+      );
+    }
+  });
+}
   // ==========================================
   // DESACTIVAR USUARIO
   // ==========================================
@@ -682,4 +703,30 @@ export class UsuarioListComponent implements OnInit {
 
     return nombres[rol] ?? rol;
   }
+
+  actualizarCarrerasDocente(carreraIds: number[]): void {
+  this.formulario.carreraIds = carreraIds;
+  this.formulario.carreraId = carreraIds.length
+    ? carreraIds[0]
+    : null;
+}
+
+toggleCarrera(carreraId: number, seleccionada: boolean): void {
+  const carrerasActuales = this.formulario.carreraIds ?? [];
+
+  let nuevasCarreras: number[];
+
+  if (seleccionada) {
+    nuevasCarreras = [...carrerasActuales, carreraId];
+  } else {
+    nuevasCarreras = carrerasActuales.filter(
+      id => id !== carreraId
+    );
+  }
+
+  this.actualizarCarrerasDocente(nuevasCarreras);
+}
+
+  
+  
 }

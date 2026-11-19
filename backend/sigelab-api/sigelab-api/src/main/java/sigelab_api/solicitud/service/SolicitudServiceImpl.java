@@ -25,6 +25,7 @@ import sigelab_api.usuario.service.UsuarioAutenticado;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -64,39 +65,121 @@ public class SolicitudServiceImpl implements SolicitudService {
             );
         }
 
+        // Obtener materia.
         Materia materia = materiaRepository.findById(request.materiaId())
                 .orElseThrow(() ->
                         new RuntimeException("Materia no encontrada.")
                 );
 
+        // Obtener laboratorio.
         Laboratorio laboratorio = laboratorioRepository
                 .findById(request.laboratorioId())
                 .orElseThrow(() ->
                         new RuntimeException("Laboratorio no encontrado.")
                 );
 
-        // Docentes y coordinadores solo pueden solicitar
-        // laboratorios de su propia carrera.
-        if (!rol.equals("ADMINISTRADOR")) {
+        // ==========================================
+        // VALIDAR CARRERAS
+        // ==========================================
 
-            Long carreraId = usuarioAutenticado.obtenerCarreraId();
+        if (materia.getCarrera() == null
+                || materia.getCarrera().getId() == null) {
 
-            if (laboratorio.getCarrera() == null
-                    || !laboratorio.getCarrera().getId().equals(carreraId)) {
-
-                throw new AccessDeniedException(
-                        "No puedes solicitar un laboratorio de otra carrera."
-                );
-            }
+            throw new IllegalArgumentException(
+                    "La materia no tiene una carrera asignada."
+            );
         }
 
-        if (laboratorio.getEstatus() !=
-                sigelab_api.laboratorio.entity.EstatusLaboratorio.DISPONIBLE) {
+        if (laboratorio.getCarrera() == null
+                || laboratorio.getCarrera().getId() == null) {
+
+            throw new IllegalArgumentException(
+                    "El laboratorio no tiene una carrera asignada."
+            );
+        }
+
+        Long carreraMateriaId = materia.getCarrera().getId();
+
+        Long carreraLaboratorioId = laboratorio.getCarrera().getId();
+
+        // La materia y el laboratorio siempre deben pertenecer
+        // a la misma carrera, independientemente del rol.
+
+        if (!Objects.equals(carreraMateriaId, carreraLaboratorioId)) {
+
+            throw new IllegalArgumentException(
+                    "La materia y el laboratorio deben pertenecer a la misma carrera."
+            );
+        }
+
+        // ==========================================
+        // VALIDAR PERMISOS SEGÚN ROL
+        // ==========================================
+
+        switch (rol) {
+
+            case "DOCENTE":
+
+                // El docente puede utilizar cualquiera de sus
+                // carreras asignadas.
+
+                if (!perteneceACarrera(usuario, carreraMateriaId)) {
+
+                    throw new AccessDeniedException(
+                            "No puedes solicitar laboratorios de una carrera que no tienes asignada."
+                    );
+                }
+
+                break;
+
+            case "COORDINADOR":
+
+                // El coordinador conserva acceso únicamente
+                // a su carrera principal.
+
+                Long carreraCoordinadorId =
+                        usuarioAutenticado.obtenerCarreraId();
+
+                if (!Objects.equals(
+                        carreraLaboratorioId,
+                        carreraCoordinadorId
+                )) {
+
+                    throw new AccessDeniedException(
+                            "No puedes solicitar un laboratorio de otra carrera."
+                    );
+                }
+
+                break;
+
+            case "ADMINISTRADOR":
+
+                // El administrador conserva acceso global.
+
+                break;
+
+            default:
+
+                throw new AccessDeniedException(
+                        "No tienes permisos para crear solicitudes."
+                );
+        }
+
+        // ==========================================
+        // VALIDAR DISPONIBILIDAD DEL LABORATORIO
+        // ==========================================
+
+        if (laboratorio.getEstatus()
+                != sigelab_api.laboratorio.entity.EstatusLaboratorio.DISPONIBLE) {
 
             throw new IllegalArgumentException(
                     "El laboratorio no se encuentra disponible."
             );
         }
+
+        // ==========================================
+        // VALIDAR CONFLICTO DE HORARIO
+        // ==========================================
 
         boolean conflicto =
                 solicitudRepository.existsConflictoHorarioCrear(
@@ -112,6 +195,10 @@ public class SolicitudServiceImpl implements SolicitudService {
             );
         }
 
+        // ==========================================
+        // REGISTRAR SOLICITUD
+        // ==========================================
+
         SolicitudLaboratorio solicitud = SolicitudLaboratorio.builder()
                 .docente(usuario)
                 .materia(materia)
@@ -126,6 +213,39 @@ public class SolicitudServiceImpl implements SolicitudService {
         solicitud = solicitudRepository.save(solicitud);
 
         return mapToResponse(solicitud);
+    }
+
+    // ==========================================
+    // VALIDAR SI EL USUARIO PERTENECE A CARRERA
+    // ==========================================
+
+    private boolean perteneceACarrera(
+            Usuario usuario,
+            Long carreraId
+    ) {
+
+        if (usuario == null || carreraId == null) {
+            return false;
+        }
+
+        // Revisar las carreras asignadas mediante ManyToMany.
+        if (usuario.getCarreras() != null
+                && usuario.getCarreras().stream()
+                .filter(Objects::nonNull)
+                .anyMatch(carrera ->
+                        Objects.equals(carrera.getId(), carreraId)
+                )) {
+
+            return true;
+        }
+
+        // Compatibilidad con usuarios que solamente
+        // tienen carrera principal asignada.
+        return usuario.getCarrera() != null
+                && Objects.equals(
+                        usuario.getCarrera().getId(),
+                        carreraId
+                );
     }
 
     // ==========================================
@@ -422,4 +542,5 @@ public class SolicitudServiceImpl implements SolicitudService {
                 solicitud.getObservaciones()
         );
     }
+
 }

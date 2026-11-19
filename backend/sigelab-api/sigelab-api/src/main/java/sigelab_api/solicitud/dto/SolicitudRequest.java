@@ -1,5 +1,7 @@
+
 package sigelab_api.solicitud.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -8,22 +10,24 @@ import java.time.LocalTime;
 
 public record SolicitudRequest(
 
-        @NotNull
+        @NotNull(message = "Debes seleccionar una materia.")
         Long materiaId,
 
-        @NotNull
+        @NotNull(message = "Debes seleccionar un laboratorio.")
         Long laboratorioId,
 
-        @NotNull
+        @NotNull(message = "La fecha es obligatoria.")
         LocalDate fecha,
 
-        @NotNull
+        @NotNull(message = "La hora de inicio es obligatoria.")
         LocalTime horaInicio,
 
-        @NotNull
+        @NotNull(message = "La hora de finalización es obligatoria.")
         LocalTime horaFin,
 
-        @Size(min = 5, max = 500)
+        @NotBlank(message = "El motivo es obligatorio.")
+        @Size(min = 5, max = 500,
+              message = "El motivo debe tener entre 5 y 500 caracteres.")
         String motivo
 
 ) {

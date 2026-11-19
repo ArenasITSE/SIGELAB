@@ -1,3 +1,4 @@
+
 package sigelab_api.materia.controller;
 
 import jakarta.validation.Valid;
@@ -20,51 +21,42 @@ public class MateriaController {
     private final MateriaService materiaService;
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR')")
     public MateriaResponse crear(
-            @RequestBody
-            @Valid
-            MateriaRequest request
-    ) {
-
+            @RequestBody @Valid MateriaRequest request) {
         return materiaService.crear(request);
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR', 'DOCENTE')")
     public List<MateriaResponse> listar() {
-
         return materiaService.listar();
     }
 
     @GetMapping("/{id}")
-    public MateriaResponse buscarPorId(
-            @PathVariable Long id
-    ) {
-
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR', 'DOCENTE')")
+    public MateriaResponse buscarPorId(@PathVariable Long id) {
         return materiaService.buscarPorId(id);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR')")
     public MateriaResponse actualizar(
             @PathVariable Long id,
-            @RequestBody
-            @Valid
-            MateriaRequest request
-    ) {
-
-        return materiaService.actualizar(
-                id,
-                request
-        );
+            @RequestBody @Valid MateriaRequest request) {
+        return materiaService.actualizar(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public void eliminar(
-            @PathVariable Long id
-    ) {
-
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR')")
+    public void eliminar(@PathVariable Long id) {
         materiaService.eliminar(id);
+    }
+
+    // REACTIVAR MATERIA
+    @PatchMapping("/{id}/activar")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDINADOR')")
+    public void activar(@PathVariable Long id) {
+        materiaService.activar(id);
     }
 }

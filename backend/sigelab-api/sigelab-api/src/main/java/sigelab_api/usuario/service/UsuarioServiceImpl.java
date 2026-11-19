@@ -27,7 +27,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-
+import sigelab_api.usuario.dto.CarreraUsuarioResponse;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -44,101 +44,119 @@ public class UsuarioServiceImpl implements UsuarioService {
     // ==========================================
     // CREAR USUARIO
     // ==========================================
+        @Override
+public UsuarioResponse crear(UsuarioRequest request) {
 
-    @Override
-    public UsuarioResponse crear(UsuarioRequest request) {
+    Usuario usuarioActual = usuarioAutenticado.obtenerUsuario();
 
-        Usuario usuarioActual = usuarioAutenticado.obtenerUsuario();
+    boolean esAdministrador =
+            usuarioActual.getRol() == Rol.ADMINISTRADOR;
 
-        boolean esAdministrador =
-                usuarioActual.getRol() == Rol.ADMINISTRADOR;
+    String correo = request.correo()
+            .trim()
+            .toLowerCase(Locale.ROOT);
 
-        String correo = request.correo()
-                .trim()
-                .toLowerCase(Locale.ROOT);
-
-        if (usuarioRepository.existsByCorreo(correo)) {
-            throw new IllegalArgumentException(
-                    "Ya existe un usuario con ese correo."
-            );
-        }
-
-        // El coordinador únicamente puede registrar docentes.
-        if (!esAdministrador && request.rol() != Rol.DOCENTE) {
-            throw new AccessDeniedException(
-                    "El coordinador solamente puede registrar docentes."
-            );
-        }
-
-        Carrera carrera;
-
-        if (esAdministrador) {
-
-            carrera = obtenerCarrera(request.carreraId());
-
-        } else {
-
-            carrera = obtenerCarreraDelCoordinador(usuarioActual);
-        }
-
-        if (request.password() == null
-                || request.password().isBlank()) {
-
-            throw new IllegalArgumentException(
-                    "La contraseña es obligatoria."
-            );
-        }
-
-        Usuario usuario = Usuario.builder()
-                .nombre(request.nombre().trim())
-                .correo(correo)
-                .password(passwordEncoder.encode(request.password()))
-                .rol(request.rol())
-                .activo(true)
-                .carrera(carrera)
-                .build();
-
-        return mapToResponse(usuarioRepository.save(usuario));
+    if (usuarioRepository.existsByCorreo(correo)) {
+        throw new IllegalArgumentException(
+                "Ya existe un usuario con ese correo."
+        );
     }
 
+    // El coordinador únicamente puede registrar docentes.
+    if (!esAdministrador && request.rol() != Rol.DOCENTE) {
+        throw new AccessDeniedException(
+                "El coordinador solamente puede registrar docentes."
+        );
+    }
+
+    List<Carrera> carrerasAsignadas;
+
+    if (request.rol() == Rol.DOCENTE) {
+
+        if (esAdministrador) {
+            // El administrador puede asignar varias carreras.
+            carrerasAsignadas = obtenerCarrerasDocente(
+                    request.carreraIds()
+            );
+        } else {
+            // El coordinador solamente asigna su propia carrera.
+            carrerasAsignadas = List.of(
+                    obtenerCarreraDelCoordinador(usuarioActual)
+            );
+        }
+
+    } else {
+
+        // Para otros roles se conserva la asignación individual.
+        Carrera carrera = obtenerCarrera(request.carreraId());
+
+        carrerasAsignadas = carrera != null
+                ? List.of(carrera)
+                : new ArrayList<>();
+    }
+
+    if (request.password() == null
+            || request.password().isBlank()) {
+        throw new IllegalArgumentException(
+                "La contraseña es obligatoria."
+        );
+    }
+
+    Carrera carreraPrincipal = carrerasAsignadas.isEmpty()
+            ? null
+            : carrerasAsignadas.get(0);
+
+    Usuario usuario = Usuario.builder()
+            .nombre(request.nombre().trim())
+            .correo(correo)
+            .password(passwordEncoder.encode(request.password()))
+            .rol(request.rol())
+            .activo(true)
+            .carrera(carreraPrincipal)
+            .carreras(new HashSet<>(carrerasAsignadas))
+            .build();
+
+    return mapToResponse(usuarioRepository.save(usuario));
+}
     // ==========================================
     // LISTAR USUARIOS
     // ==========================================
 
     @Override
-    @Transactional(readOnly = true)
-    public List<UsuarioResponse> listar() {
+@Transactional(readOnly = true)
+public List<UsuarioResponse> listar() {
 
-        Usuario usuarioActual = usuarioAutenticado.obtenerUsuario();
+    Usuario usuarioActual = usuarioAutenticado.obtenerUsuario();
 
-        List<Usuario> usuarios;
+    List<Usuario> usuarios;
 
-        if (usuarioActual.getRol() == Rol.ADMINISTRADOR) {
+    if (usuarioActual.getRol() == Rol.ADMINISTRADOR) {
 
-            usuarios = usuarioRepository.findAll();
+        usuarios = usuarioRepository.findAll();
 
-        } else if (usuarioActual.getRol() == Rol.COORDINADOR) {
+    } else if (usuarioActual.getRol() == Rol.COORDINADOR) {
 
-            Long carreraId =
-                    usuarioAutenticado.obtenerCarreraId();
+        Long carreraId = usuarioAutenticado.obtenerCarreraId();
 
-            usuarios = usuarioRepository
-                    .findAllByCarrera_Id(carreraId)
-                    .stream()
-                    .filter(usuario -> usuario.getRol() == Rol.DOCENTE)
-                    .toList();
-
-        } else {
-
-            throw new AccessDeniedException(
-                    "No tienes permisos para consultar usuarios."
-            );
-        }
-
-        return usuarios.stream()
-                .map(this::mapToResponse)
+        usuarios = usuarioRepository.findAll()
+                .stream()
+                .filter(usuario -> usuario.getRol() == Rol.DOCENTE)
+                .filter(usuario ->
+                        perteneceACarrera(usuario, carreraId)
+                )
                 .toList();
+
+    } else {
+
+        throw new AccessDeniedException(
+                "No tienes permisos para consultar usuarios."
+        );
     }
+
+    return usuarios.stream()
+            .map(this::mapToResponse)
+            .toList();
+}
 
     // ==========================================
     // BUSCAR USUARIO POR ID
@@ -156,62 +174,75 @@ public class UsuarioServiceImpl implements UsuarioService {
     // ==========================================
     // ACTUALIZAR USUARIO
     // ==========================================
+@Override
+public UsuarioResponse actualizar(Long id, UsuarioRequest request) {
 
-    @Override
-    public UsuarioResponse actualizar(
-            Long id,
-            UsuarioRequest request
-    ) {
+    Usuario usuarioActual = usuarioAutenticado.obtenerUsuario();
 
-        Usuario usuarioActual = usuarioAutenticado.obtenerUsuario();
+    boolean esAdministrador =
+            usuarioActual.getRol() == Rol.ADMINISTRADOR;
 
-        boolean esAdministrador =
-                usuarioActual.getRol() == Rol.ADMINISTRADOR;
+    Usuario usuario = obtenerUsuarioGestionable(id);
 
-        Usuario usuario = obtenerUsuarioGestionable(id);
+    String correo = request.correo()
+            .trim()
+            .toLowerCase(Locale.ROOT);
 
-        String correo = request.correo()
-                .trim()
-                .toLowerCase(Locale.ROOT);
+    if (!usuario.getCorreo().equalsIgnoreCase(correo)
+            && usuarioRepository.existsByCorreo(correo)) {
 
-        if (!usuario.getCorreo().equalsIgnoreCase(correo)
-                && usuarioRepository.existsByCorreo(correo)) {
+        throw new IllegalArgumentException(
+                "El correo ya está registrado por otro usuario."
+        );
+    }
 
-            throw new IllegalArgumentException(
-                    "El correo ya está registrado por otro usuario."
+    if (!esAdministrador && request.rol() != Rol.DOCENTE) {
+        throw new AccessDeniedException(
+                "El coordinador solamente puede administrar docentes."
+        );
+    }
+
+    usuario.setNombre(request.nombre().trim());
+    usuario.setCorreo(correo);
+    usuario.setRol(request.rol());
+
+    if (esAdministrador) {
+
+        if (request.rol() == Rol.DOCENTE) {
+
+            List<Carrera> carrerasAsignadas =
+                    obtenerCarrerasDocente(request.carreraIds());
+
+            usuario.setCarreras(
+                    new HashSet<>(carrerasAsignadas)
             );
-        }
-
-        // El coordinador no puede cambiar el rol del docente.
-        if (!esAdministrador && request.rol() != Rol.DOCENTE) {
-            throw new AccessDeniedException(
-                    "El coordinador solamente puede administrar docentes."
-            );
-        }
-
-        usuario.setNombre(request.nombre().trim());
-        usuario.setCorreo(correo);
-        usuario.setRol(request.rol());
-
-        if (esAdministrador) {
 
             usuario.setCarrera(
-                    obtenerCarrera(request.carreraId())
+                    carrerasAsignadas.get(0)
             );
 
+        } else {
+
+            Carrera carrera = obtenerCarrera(request.carreraId());
+
+            usuario.setCarrera(carrera);
+            usuario.getCarreras().clear();
+
         }
-        // Para coordinadores se conserva la carrera original.
-
-        if (request.password() != null
-                && !request.password().isBlank()) {
-
-            usuario.setPassword(
-                    passwordEncoder.encode(request.password())
-            );
-        }
-
-        return mapToResponse(usuarioRepository.save(usuario));
     }
+
+    // El coordinador conserva las carreras que ya tiene asignadas.
+
+    if (request.password() != null
+            && !request.password().isBlank()) {
+
+        usuario.setPassword(
+                passwordEncoder.encode(request.password())
+        );
+    }
+
+    return mapToResponse(usuarioRepository.save(usuario));
+}
 
     // ==========================================
     // ELIMINAR USUARIO
@@ -265,46 +296,44 @@ public class UsuarioServiceImpl implements UsuarioService {
     // ==========================================
     // OBTENER USUARIO SEGÚN PERMISOS
     // ==========================================
+private Usuario obtenerUsuarioGestionable(Long id) {
 
-    private Usuario obtenerUsuarioGestionable(Long id) {
+    Usuario usuarioActual = usuarioAutenticado.obtenerUsuario();
 
-        Usuario usuarioActual = usuarioAutenticado.obtenerUsuario();
+    if (usuarioActual.getRol() == Rol.ADMINISTRADOR) {
 
-        if (usuarioActual.getRol() == Rol.ADMINISTRADOR) {
-
-            return usuarioRepository.findWithCarreraById(id)
-                    .orElseThrow(() ->
-                            new RuntimeException("Usuario no encontrado.")
-                    );
-        }
-
-        if (usuarioActual.getRol() == Rol.COORDINADOR) {
-
-            Long carreraId =
-                    usuarioAutenticado.obtenerCarreraId();
-
-            Usuario usuario = usuarioRepository
-                    .findByIdAndCarrera_Id(id, carreraId)
-                    .orElseThrow(() ->
-                            new AccessDeniedException(
-                                    "El usuario no existe o no pertenece a tu carrera."
-                            )
-                    );
-
-            if (usuario.getRol() != Rol.DOCENTE) {
-                throw new AccessDeniedException(
-                        "Solamente puedes administrar docentes."
+        return usuarioRepository.findWithCarreraById(id)
+                .orElseThrow(() ->
+                        new RuntimeException("Usuario no encontrado.")
                 );
-            }
-
-            return usuario;
-        }
-
-        throw new AccessDeniedException(
-                "No tienes permisos para administrar usuarios."
-        );
     }
 
+    if (usuarioActual.getRol() == Rol.COORDINADOR) {
+
+        Long carreraId = usuarioAutenticado.obtenerCarreraId();
+
+        Usuario usuario = usuarioRepository.findWithCarreraById(id)
+                .orElseThrow(() ->
+                        new AccessDeniedException(
+                                "El usuario no existe o no pertenece a tu carrera."
+                        )
+                );
+
+        if (usuario.getRol() != Rol.DOCENTE
+                || !perteneceACarrera(usuario, carreraId)) {
+
+            throw new AccessDeniedException(
+                    "El usuario no existe o no pertenece a tu carrera."
+            );
+        }
+
+        return usuario;
+    }
+
+    throw new AccessDeniedException(
+            "No tienes permisos para administrar usuarios."
+    );
+}
     // ==========================================
     // IMPORTAR USUARIOS DESDE EXCEL
     // ==========================================
@@ -629,6 +658,117 @@ public class UsuarioServiceImpl implements UsuarioService {
     }
 
     // ==========================================
+// OBTENER VARIAS CARRERAS PARA UN DOCENTE
+// ==========================================
+
+private List<Carrera> obtenerCarrerasDocente(List<Long> carreraIds) {
+
+    if (carreraIds == null || carreraIds.isEmpty()) {
+        throw new IllegalArgumentException(
+                "Debes asignar al menos una carrera al docente."
+        );
+    }
+
+    Set<Long> idsUnicos = new HashSet<>(carreraIds);
+
+    if (idsUnicos.size() != carreraIds.size()) {
+        throw new IllegalArgumentException(
+                "No puedes seleccionar carreras duplicadas."
+        );
+    }
+
+    List<Carrera> carreras = carreraRepository.findAllById(idsUnicos);
+
+    if (carreras.size() != idsUnicos.size()) {
+        throw new IllegalArgumentException(
+                "Una o más carreras seleccionadas no existen."
+        );
+    }
+
+    if (carreras.stream().anyMatch(
+            carrera -> !Boolean.TRUE.equals(carrera.getActivo())
+    )) {
+        throw new IllegalArgumentException(
+                "No puedes asignar carreras inactivas."
+        );
+    }
+
+    // Mantener el mismo orden en el que se recibieron los IDs.
+    Map<Long, Carrera> carrerasPorId = carreras.stream()
+            .collect(Collectors.toMap(
+                    Carrera::getId,
+                    carrera -> carrera
+            ));
+
+    return carreraIds.stream()
+            .map(carrerasPorId::get)
+            .toList();
+}
+
+
+// ==========================================
+// VALIDAR SI UN DOCENTE PERTENECE A UNA CARRERA
+// ==========================================
+
+private boolean perteneceACarrera(Usuario usuario, Long carreraId) {
+
+    if (carreraId == null) {
+        return false;
+    }
+
+    if (usuario.getCarreras() != null
+            && usuario.getCarreras().stream()
+            .anyMatch(carrera ->
+                    carrera.getId().equals(carreraId))) {
+        return true;
+    }
+
+    // Compatibilidad con usuarios anteriores a la relación múltiple.
+    return usuario.getCarrera() != null
+            && usuario.getCarrera().getId().equals(carreraId);
+}
+
+
+// ==========================================
+// OBTENER LAS CARRERAS DEL DOCENTE AUTENTICADO
+// ==========================================
+
+@Override
+@Transactional(readOnly = true)
+public List<CarreraUsuarioResponse> misCarreras() {
+
+    Usuario usuario = usuarioAutenticado.obtenerUsuario();
+
+    if (usuario.getRol() != Rol.DOCENTE) {
+        throw new AccessDeniedException(
+                "Esta operación está disponible para docentes."
+        );
+    }
+
+    Set<Carrera> carreras = new HashSet<>();
+
+    if (usuario.getCarreras() != null) {
+        carreras.addAll(usuario.getCarreras());
+    }
+
+    // Compatibilidad con usuarios que todavía no tengan relación múltiple.
+    if (carreras.isEmpty() && usuario.getCarrera() != null) {
+        carreras.add(usuario.getCarrera());
+    }
+
+    return carreras.stream()
+            .filter(carrera -> Boolean.TRUE.equals(carrera.getActivo()))
+            .sorted(Comparator.comparing(Carrera::getNombre))
+            .map(carrera -> new CarreraUsuarioResponse(
+                    carrera.getId(),
+                    carrera.getClave(),
+                    carrera.getNombre(),
+                    carrera.getActivo()
+            ))
+            .toList();
+}
+
+    // ==========================================
     // GENERAR CONTRASEÑA TEMPORAL
     // ==========================================
 
@@ -756,18 +896,47 @@ public class UsuarioServiceImpl implements UsuarioService {
     // MAPEAR RESPUESTA
     // ==========================================
 
-    private UsuarioResponse mapToResponse(Usuario usuario) {
+   private UsuarioResponse mapToResponse(Usuario usuario) {
 
-        Carrera carrera = usuario.getCarrera();
+    Set<Carrera> carrerasAsignadas = new HashSet<>();
 
-        return new UsuarioResponse(
-                usuario.getId(),
-                usuario.getNombre(),
-                usuario.getCorreo(),
-                usuario.getRol().name(),
-                usuario.getActivo(),
-                carrera != null ? carrera.getId() : null,
-                carrera != null ? carrera.getNombre() : null
-        );
+    if (usuario.getCarreras() != null) {
+        carrerasAsignadas.addAll(usuario.getCarreras());
     }
+
+    // Compatibilidad con usuarios que todavía no tengan carreras en la tabla puente.
+    if (carrerasAsignadas.isEmpty() && usuario.getCarrera() != null) {
+        carrerasAsignadas.add(usuario.getCarrera());
+    }
+
+    List<Carrera> carrerasOrdenadas = carrerasAsignadas.stream()
+            .sorted(Comparator.comparing(Carrera::getNombre))
+            .toList();
+
+    Carrera carreraPrincipal = usuario.getCarrera();
+
+    if (carreraPrincipal == null && !carrerasOrdenadas.isEmpty()) {
+        carreraPrincipal = carrerasOrdenadas.get(0);
+    }
+
+    List<Long> carreraIds = carrerasOrdenadas.stream()
+            .map(Carrera::getId)
+            .toList();
+
+    List<String> nombresCarreras = carrerasOrdenadas.stream()
+            .map(Carrera::getNombre)
+            .toList();
+
+    return new UsuarioResponse(
+            usuario.getId(),
+            usuario.getNombre(),
+            usuario.getCorreo(),
+            usuario.getRol().name(),
+            usuario.getActivo(),
+            carreraPrincipal != null ? carreraPrincipal.getId() : null,
+            carreraPrincipal != null ? carreraPrincipal.getNombre() : null,
+            carreraIds,
+            nombresCarreras
+    );
+}
 }

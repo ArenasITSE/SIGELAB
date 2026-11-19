@@ -2,6 +2,7 @@
 package sigelab_api.solicitud.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 
 import lombok.RequiredArgsConstructor;
 
@@ -11,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import sigelab_api.solicitud.dto.SolicitudRequest;
@@ -23,6 +25,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/solicitudes")
 @RequiredArgsConstructor
+@Validated
 public class SolicitudController {
 
     private final SolicitudService solicitudService;
@@ -37,7 +40,6 @@ public class SolicitudController {
     public SolicitudResponse crear(
             @RequestBody @Valid SolicitudRequest request
     ) {
-
         return solicitudService.crear(request);
     }
 
@@ -48,7 +50,6 @@ public class SolicitudController {
     @GetMapping
     @PreAuthorize("hasAnyRole('DOCENTE', 'COORDINADOR', 'ADMINISTRADOR')")
     public List<SolicitudResponse> listar() {
-
         return solicitudService.listar();
     }
 
@@ -61,41 +62,34 @@ public class SolicitudController {
     public SolicitudResponse buscarPorId(
             @PathVariable Long id
     ) {
-
         return solicitudService.buscarPorId(id);
     }
 
     // ==========================================
-    // APROBAR SOLICITUD
+    // AUTORIZAR SOLICITUD
     // ==========================================
 
-    @PutMapping("/{id}/aprobar")
+    @PatchMapping("/{id}/autorizar")
     @PreAuthorize("hasAnyRole('COORDINADOR', 'ADMINISTRADOR')")
-    public SolicitudResponse aprobar(
-            @PathVariable Long id,
-            @RequestParam(required = false) String observaciones
+    public SolicitudResponse autorizar(
+            @PathVariable Long id
     ) {
-
-        return solicitudService.aprobar(
-                id,
-                observaciones
-        );
+        return solicitudService.aprobar(id, null);
     }
 
     // ==========================================
     // RECHAZAR SOLICITUD
     // ==========================================
 
-    @PutMapping("/{id}/rechazar")
+    @PatchMapping("/{id}/rechazar")
     @PreAuthorize("hasAnyRole('COORDINADOR', 'ADMINISTRADOR')")
     public SolicitudResponse rechazar(
             @PathVariable Long id,
-            @RequestParam(required = false) String observaciones
+            @RequestBody @Valid RechazoRequest request
     ) {
-
         return solicitudService.rechazar(
                 id,
-                observaciones
+                request.observaciones()
         );
     }
 
@@ -109,7 +103,6 @@ public class SolicitudController {
     public void eliminar(
             @PathVariable Long id
     ) {
-
         solicitudService.eliminar(id);
     }
 
@@ -120,8 +113,19 @@ public class SolicitudController {
     @GetMapping("/mis-solicitudes")
     @PreAuthorize("hasRole('DOCENTE')")
     public List<SolicitudResponse> misSolicitudes() {
-
         return solicitudService.listarMisSolicitudes();
+    }
+
+    // ==========================================
+    // DTO PARA RECHAZO
+    // ==========================================
+
+    public record RechazoRequest(
+
+            @NotBlank(message = "Debes indicar el motivo del rechazo.")
+            String observaciones
+
+    ) {
     }
 
     // ==========================================
@@ -132,12 +136,11 @@ public class SolicitudController {
     public ResponseEntity<Map<String, String>> manejarAccesoDenegado(
             AccessDeniedException ex
     ) {
-
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(Map.of(
                         "mensaje",
-                        ex.getMessage()
+                        obtenerMensaje(ex, "No tienes permisos para realizar esta operación.")
                 ));
     }
 
@@ -145,25 +148,17 @@ public class SolicitudController {
     public ResponseEntity<Map<String, String>> manejarArgumentos(
             IllegalArgumentException ex
     ) {
-
         return ResponseEntity
                 .badRequest()
                 .body(Map.of(
                         "mensaje",
-                        ex.getMessage()
+                        obtenerMensaje(ex, "Los datos enviados no son válidos.")
                 ));
     }
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, String>> manejarError(
-            RuntimeException ex
-    ) {
-
-        return ResponseEntity
-                .badRequest()
-                .body(Map.of(
-                        "mensaje",
-                        ex.getMessage()
-                ));
+    private String obtenerMensaje(Exception ex, String mensajeDefecto) {
+        return ex.getMessage() != null && !ex.getMessage().isBlank()
+                ? ex.getMessage()
+                : mensajeDefecto;
     }
 }

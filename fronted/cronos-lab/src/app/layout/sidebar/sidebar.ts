@@ -44,57 +44,143 @@ export class SidebarComponent {
 
     const menus: Record<string, MenuSection[]> = {
 
+      // ADMINISTRADOR
       ADMINISTRADOR: [
         {
           title: 'GESTIÓN',
           items: [
-            { label: 'Laboratorios', route: '/laboratorios', icon: 'fas fa-flask' },
-            { label: 'Solicitudes', route: '/solicitudes', icon: 'fas fa-file-signature' },
-            { label: 'Calendario', route: '/calendario', icon: 'fas fa-calendar' },
-            { label: 'Usuarios', route: '/usuarios', icon: 'fas fa-users' },
-            { label: 'Carreras', route: '/carreras', icon: 'fas fa-graduation-cap' },
-            { label: 'Docentes', route: '/docentes', icon: 'fas fa-chalkboard-teacher' },
+            {
+              label: 'Laboratorios',
+              route: '/laboratorios',
+              icon: 'fas fa-flask'
+            },
+            {
+              label: 'Materias',
+              route: '/materias',
+              icon: 'fas fa-book'
+            },
+            {
+              label: 'Solicitudes',
+              route: '/solicitudes',
+              icon: 'fas fa-file-signature'
+            },
+            {
+              label: 'Calendario',
+              route: '/calendario',
+              icon: 'fas fa-calendar'
+            },
+            {
+              label: 'Usuarios',
+              route: '/usuarios',
+              icon: 'fas fa-users'
+            },
+            {
+              label: 'Carreras',
+              route: '/carreras',
+              icon: 'fas fa-graduation-cap'
+            },
+            {
+              label: 'Docentes',
+              route: '/docentes',
+              icon: 'fas fa-chalkboard-teacher'
+            }
           ]
         },
         {
           title: 'REPORTES',
           items: [
-            { label: 'Bitácora', route: '/bitacora', icon: 'fas fa-clipboard-list' }
+            {
+              label: 'Bitácora',
+              route: '/bitacora',
+              icon: 'fas fa-clipboard-list'
+            }
           ]
         }
       ],
 
+      // COORDINADOR
       COORDINADOR: [
         {
           title: 'GESTIÓN ACADÉMICA',
           items: [
-            { label: 'Laboratorios', route: '/laboratorios', icon: 'fas fa-flask' },
-            { label: 'Solicitudes', route: '/solicitudes', icon: 'fas fa-file-signature' },
-            { label: 'Calendario', route: '/calendario', icon: 'fas fa-calendar' },
-            { label: 'Docentes', route: '/docentes', icon: 'fas fa-chalkboard-teacher' },
-            { label: 'Estudiantes', route: '/estudiantes', icon: 'fas fa-user-graduate' }
+            {
+              label: 'Laboratorios',
+              route: '/laboratorios',
+              icon: 'fas fa-flask'
+            },
+            {
+              label: 'Materias',
+              route: '/materias',
+              icon: 'fas fa-book'
+            },
+            {
+              label: 'Solicitudes',
+              route: '/solicitudes',
+              icon: 'fas fa-file-signature'
+            },
+            {
+              label: 'Calendario',
+              route: '/calendario',
+              icon: 'fas fa-calendar'
+            },
+            {
+              label: 'Docentes',
+              route: '/docentes',
+              icon: 'fas fa-chalkboard-teacher'
+            },
+            {
+              label: 'Estudiantes',
+              route: '/estudiantes',
+              icon: 'fas fa-user-graduate'
+            }
           ]
         }
       ],
 
+      // DOCENTE
       DOCENTE: [
         {
           title: 'SERVICIOS',
           items: [
-            { label: 'Laboratorios', route: '/laboratorios', icon: 'fas fa-flask' },
-            { label: 'Mis solicitudes', route: '/solicitudes', icon: 'fas fa-file-signature' },
-            { label: 'Calendario', route: '/calendario', icon: 'fas fa-calendar' }
+            {
+              label: 'Laboratorios',
+              route: '/laboratorios',
+              icon: 'fas fa-flask'
+            },
+            {
+              label: 'Mis solicitudes',
+              route: '/solicitudes',
+              icon: 'fas fa-file-signature'
+            },
+            {
+              label: 'Calendario',
+              route: '/calendario',
+              icon: 'fas fa-calendar'
+            }
           ]
         }
       ],
 
+      // TÉCNICO
       TECNICO: [
         {
           title: 'GESTIÓN TÉCNICA',
           items: [
-            { label: 'Laboratorios', route: '/laboratorios', icon: 'fas fa-flask' },
-            { label: 'Solicitudes', route: '/solicitudes', icon: 'fas fa-file-signature' },
-            { label: 'Calendario', route: '/calendario', icon: 'fas fa-calendar' }
+            {
+              label: 'Laboratorios',
+              route: '/laboratorios',
+              icon: 'fas fa-flask'
+            },
+            {
+              label: 'Solicitudes',
+              route: '/solicitudes',
+              icon: 'fas fa-file-signature'
+            },
+            {
+              label: 'Calendario',
+              route: '/calendario',
+              icon: 'fas fa-calendar'
+            }
           ]
         }
       ]

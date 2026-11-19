@@ -12,7 +12,6 @@ import { HttpClient } from '@angular/common/http';
 
 import {
   finalize,
-  switchMap,
   timeout
 } from 'rxjs';
 
@@ -20,12 +19,41 @@ import { environment } from '../../../../environments/environment';
 
 import { SolicitudService } from '../../services/solicitud.service';
 
+import { UsuarioService } from '../../../usuarios/services/usuario.service';
+
 import {
   SolicitudLaboratorio,
   SolicitudRequest,
   EstatusSolicitud,
   LaboratorioOption
 } from '../../models/solicitud.model';
+
+import { CarreraOption } from '../../../usuarios/models/usuario.model';
+
+// ==========================================
+// INTERFACES
+// ==========================================
+
+interface MateriaOption {
+  id: number;
+  nombre: string;
+  carreraId?: number;
+}
+
+type SolicitudApi = Partial<SolicitudLaboratorio> & {
+  estado?: string;
+  estatus?: string;
+  docenteId?: number;
+  docente?: string;
+  solicitanteId?: number;
+  solicitante?: string;
+  materiaId?: number;
+  materia?: string;
+};
+
+// ==========================================
+// COMPONENTE
+// ==========================================
 
 @Component({
   selector: 'app-solicitud-list',
@@ -37,6 +65,7 @@ import {
 export class SolicitudListComponent implements OnInit {
 
   private solicitudService = inject(SolicitudService);
+  private usuarioService = inject(UsuarioService);
   private http = inject(HttpClient);
   private cdr = inject(ChangeDetectorRef);
 
@@ -45,27 +74,28 @@ export class SolicitudListComponent implements OnInit {
   // ==========================================
 
   solicitudes: SolicitudLaboratorio[] = [];
+
   laboratorios: LaboratorioOption[] = [];
+
+  materias: MateriaOption[] = [];
+
+  carrerasDocente: CarreraOption[] = [];
 
   // ==========================================
   // USUARIO Y PERMISOS
   // ==========================================
 
-  rol = localStorage.getItem('rol') ?? '';
+  get rol(): string {
+    return (localStorage.getItem('rol') ?? '').toUpperCase();
+  }
 
   get puedeGestionar(): boolean {
-    return [
-      'ADMINISTRADOR',
-      'COORDINADOR'
-    ].includes(this.rol);
+    return ['ADMINISTRADOR', 'COORDINADOR'].includes(this.rol);
   }
 
   get puedeCrear(): boolean {
-    return [
-      'DOCENTE',
-      'ADMINISTRADOR',
-      'COORDINADOR'
-    ].includes(this.rol);
+    return ['DOCENTE', 'ADMINISTRADOR', 'COORDINADOR']
+      .includes(this.rol);
   }
 
   // ==========================================
@@ -73,21 +103,37 @@ export class SolicitudListComponent implements OnInit {
   // ==========================================
 
   cargando = false;
+
   cargandoLaboratorios = false;
+
+  cargandoMaterias = false;
+
+  cargandoCarreras = false;
+
   guardando = false;
+
   procesandoId: number | null = null;
 
   mostrarFormulario = false;
+
   mostrarRechazo = false;
 
   solicitudSeleccionada: SolicitudLaboratorio | null = null;
+
+  // ==========================================
+  // CARRERA SELECCIONADA
+  // ==========================================
+
+  carreraSeleccionadaId: number | null = null;
 
   // ==========================================
   // FILTROS
   // ==========================================
 
   busqueda = '';
+
   filtroEstatus = '';
+
   filtroFecha = '';
 
   // ==========================================
@@ -95,6 +141,7 @@ export class SolicitudListComponent implements OnInit {
   // ==========================================
 
   mensaje = '';
+
   tipoMensaje: 'success' | 'error' = 'success';
 
   // ==========================================
@@ -107,9 +154,18 @@ export class SolicitudListComponent implements OnInit {
 
   fechaMinima = this.obtenerFechaLocal();
 
+  // ==========================================
+  // INICIALIZACIÓN
+  // ==========================================
+
   ngOnInit(): void {
     this.listarSolicitudes();
     this.cargarLaboratorios();
+    this.cargarMaterias();
+
+    if (this.rol === 'DOCENTE') {
+      this.cargarMisCarreras();
+    }
   }
 
   // ==========================================
@@ -118,6 +174,7 @@ export class SolicitudListComponent implements OnInit {
 
   formularioVacio(): SolicitudRequest {
     return {
+      materiaId: 0,
       laboratorioId: 0,
       fecha: '',
       horaInicio: '',
@@ -127,17 +184,210 @@ export class SolicitudListComponent implements OnInit {
     };
   }
 
-  // ==========================================
-  // FECHA LOCAL
-  // ==========================================
-
   private obtenerFechaLocal(): string {
     const fecha = new Date();
+
     const anio = fecha.getFullYear();
     const mes = String(fecha.getMonth() + 1).padStart(2, '0');
     const dia = String(fecha.getDate()).padStart(2, '0');
 
     return `${anio}-${mes}-${dia}`;
+  }
+
+  // ==========================================
+  // CARGAR CARRERAS DEL DOCENTE
+  // ==========================================
+
+  cargarMisCarreras(): void {
+
+    this.cargandoCarreras = true;
+
+    this.usuarioService.misCarreras()
+      .pipe(
+        timeout({ first: 15000 }),
+        finalize(() => {
+          this.cargandoCarreras = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+
+        next: data => {
+
+          if (!Array.isArray(data)) {
+            this.carrerasDocente = [];
+
+            this.mostrarMensaje(
+              'La respuesta de carreras no es válida.',
+              'error'
+            );
+
+            return;
+          }
+
+          this.carrerasDocente = data.filter(
+            carrera => carrera.activo
+          );
+        },
+
+        error: error => {
+
+          console.error(
+            'Error al cargar las carreras:',
+            error
+          );
+
+          this.carrerasDocente = [];
+
+          this.mostrarMensaje(
+            this.obtenerMensajeError(
+              error,
+              'No fue posible cargar tus carreras asignadas.'
+            ),
+            'error'
+          );
+        }
+      });
+  }
+
+  // ==========================================
+  // CAMBIAR CARRERA
+  // ==========================================
+
+  cambiarCarrera(carreraId: number | null): void {
+
+    this.carreraSeleccionadaId =
+      carreraId !== null ? Number(carreraId) : null;
+
+    // Reiniciar las selecciones anteriores.
+    this.formulario.materiaId = 0;
+    this.formulario.laboratorioId = 0;
+
+    this.cdr.detectChanges();
+  }
+
+  // ==========================================
+  // MATERIAS DISPONIBLES
+  // ==========================================
+
+  get materiasDisponibles(): MateriaOption[] {
+
+    // Administrador y coordinador conservan el listado completo.
+    if (this.rol !== 'DOCENTE') {
+      return this.materias;
+    }
+
+    if (this.carreraSeleccionadaId === null) {
+      return [];
+    }
+
+    return this.materias.filter(
+      materia =>
+        Number(materia.carreraId) === this.carreraSeleccionadaId
+    );
+  }
+
+  // ==========================================
+  // LABORATORIOS DISPONIBLES
+  // ==========================================
+
+  get laboratoriosDisponibles(): LaboratorioOption[] {
+
+    // Administrador y coordinador conservan el listado completo.
+    if (this.rol !== 'DOCENTE') {
+      return this.laboratorios;
+    }
+
+    if (this.carreraSeleccionadaId === null) {
+      return [];
+    }
+
+    return this.laboratorios.filter(
+      laboratorio =>
+        Number(laboratorio.carreraId) === this.carreraSeleccionadaId
+    );
+  }
+
+  // ==========================================
+  // NORMALIZAR ESTADOS
+  // ==========================================
+
+  private normalizarEstado(
+    estado?: string | null
+  ): EstatusSolicitud {
+
+    switch ((estado ?? '').toUpperCase()) {
+
+      case 'APROBADA':
+      case 'AUTORIZADA':
+        return 'AUTORIZADA';
+
+      case 'RECHAZADA':
+        return 'RECHAZADA';
+
+      default:
+        return 'PENDIENTE';
+    }
+  }
+
+  // ==========================================
+  // NORMALIZAR SOLICITUD
+  // ==========================================
+
+  private normalizarSolicitud(
+    data: SolicitudApi
+  ): SolicitudLaboratorio {
+
+    return {
+      id: Number(data.id ?? 0),
+
+      laboratorioId: Number(data.laboratorioId ?? 0),
+      laboratorio: data.laboratorio ?? '',
+
+      solicitanteId: Number(
+        data.solicitanteId ?? data.docenteId ?? 0
+      ),
+
+      solicitante:
+        data.solicitante ?? data.docente ?? '',
+
+      carreraId: Number(data.carreraId ?? 0),
+      carrera: data.carrera ?? '',
+
+      fecha: data.fecha ?? '',
+      horaInicio: data.horaInicio ?? '',
+      horaFin: data.horaFin ?? '',
+
+      numeroPersonas: Number(data.numeroPersonas ?? 0),
+      motivo: data.motivo ?? '',
+
+      estatus: this.normalizarEstado(
+        data.estado ?? data.estatus
+      ),
+
+      observaciones: data.observaciones ?? null,
+      fechaSolicitud: data.fechaSolicitud
+    };
+  }
+
+  private actualizarSolicitudes(
+    data: SolicitudApi[]
+  ): void {
+
+    if (!Array.isArray(data)) {
+      this.mostrarMensaje(
+        'La respuesta de solicitudes no es válida.',
+        'error'
+      );
+
+      return;
+    }
+
+    this.solicitudes = data.map(
+      solicitud => this.normalizarSolicitud(solicitud)
+    );
+
+    this.cdr.detectChanges();
   }
 
   // ==========================================
@@ -151,50 +401,104 @@ export class SolicitudListComponent implements OnInit {
     this.http.get<LaboratorioOption[]>(
       `${environment.apiUrl}/laboratorios`
     )
-      .pipe(
-        timeout({ first: 15000 }),
-        finalize(() => {
-          this.cargandoLaboratorios = false;
-          this.cdr.detectChanges();
-        })
-      )
-      .subscribe({
+    .pipe(
+      timeout({ first: 15000 }),
+      finalize(() => {
+        this.cargandoLaboratorios = false;
+        this.cdr.detectChanges();
+      })
+    )
+    .subscribe({
 
-        next: (data) => {
+      next: data => {
 
-          if (!Array.isArray(data)) {
-            this.mostrarMensaje(
-              'La respuesta de laboratorios no es válida.',
-              'error'
-            );
-            return;
-          }
-
-          this.laboratorios = data.filter(
-            laboratorio =>
-              laboratorio.estatus === 'DISPONIBLE'
-          );
-
-          console.log(
-            'Laboratorios disponibles:',
-            this.laboratorios
-          );
-        },
-
-        error: (error) => {
-
-          console.error(
-            'Error al cargar laboratorios:',
-            error
-          );
-
+        if (!Array.isArray(data)) {
           this.mostrarMensaje(
-            error.error?.message ||
-            'No fue posible cargar los laboratorios.',
+            'La respuesta de laboratorios no es válida.',
             'error'
           );
+
+          return;
         }
-      });
+
+        this.laboratorios = data.filter(
+          laboratorio =>
+            laboratorio.estatus?.toUpperCase() === 'DISPONIBLE'
+        );
+      },
+
+      error: error => {
+
+        console.error(
+          'Error al cargar laboratorios:',
+          error
+        );
+
+        this.mostrarMensaje(
+          this.obtenerMensajeError(
+            error,
+            'No fue posible cargar los laboratorios.'
+          ),
+          'error'
+        );
+      }
+    });
+  }
+
+  // ==========================================
+  // CARGAR MATERIAS
+  // ==========================================
+
+  cargarMaterias(): void {
+
+    this.cargandoMaterias = true;
+
+    this.http.get<MateriaOption[]>(
+      `${environment.apiUrl}/materias`
+    )
+    .pipe(
+      timeout({ first: 15000 }),
+      finalize(() => {
+        this.cargandoMaterias = false;
+        this.cdr.detectChanges();
+      })
+    )
+    .subscribe({
+
+      next: data => {
+
+        if (!Array.isArray(data)) {
+          this.materias = [];
+
+          this.mostrarMensaje(
+            'La respuesta de materias no es válida.',
+            'error'
+          );
+
+          return;
+        }
+
+        this.materias = data;
+      },
+
+      error: error => {
+
+        console.error(
+          'Error al cargar materias:',
+          error
+        );
+
+        this.materias = [];
+
+        this.mostrarMensaje(
+          this.obtenerMensajeError(
+            error,
+            'No fue posible cargar las materias.'
+          ),
+          'error'
+        );
+      }
+    });
   }
 
   // ==========================================
@@ -215,25 +519,11 @@ export class SolicitudListComponent implements OnInit {
       )
       .subscribe({
 
-        next: (data) => {
-
-          if (!Array.isArray(data)) {
-            this.mostrarMensaje(
-              'La respuesta de solicitudes no es válida.',
-              'error'
-            );
-            return;
-          }
-
-          this.solicitudes = [...data];
-
-          console.log(
-            'Solicitudes cargadas:',
-            this.solicitudes
-          );
+        next: data => {
+          this.actualizarSolicitudes(data);
         },
 
-        error: (error) => {
+        error: error => {
 
           console.error(
             'Error al consultar solicitudes:',
@@ -241,8 +531,10 @@ export class SolicitudListComponent implements OnInit {
           );
 
           this.mostrarMensaje(
-            error.error?.message ||
-            'No fue posible consultar las solicitudes.',
+            this.obtenerMensajeError(
+              error,
+              'No fue posible consultar las solicitudes.'
+            ),
             'error'
           );
         }
@@ -260,10 +552,17 @@ export class SolicitudListComponent implements OnInit {
     return this.solicitudes.filter(solicitud => {
 
       const coincideTexto =
-        (solicitud.laboratorio ?? '').toLowerCase().includes(texto) ||
-        (solicitud.solicitante ?? '').toLowerCase().includes(texto) ||
-        (solicitud.carrera ?? '').toLowerCase().includes(texto) ||
-        (solicitud.motivo ?? '').toLowerCase().includes(texto);
+        (solicitud.laboratorio ?? '')
+          .toLowerCase().includes(texto) ||
+
+        (solicitud.solicitante ?? '')
+          .toLowerCase().includes(texto) ||
+
+        (solicitud.carrera ?? '')
+          .toLowerCase().includes(texto) ||
+
+        (solicitud.motivo ?? '')
+          .toLowerCase().includes(texto);
 
       const coincideEstatus =
         !this.filtroEstatus ||
@@ -287,20 +586,48 @@ export class SolicitudListComponent implements OnInit {
 
   get totalPendientes(): number {
     return this.solicitudes.filter(
-      s => s.estatus === 'PENDIENTE'
+      solicitud => solicitud.estatus === 'PENDIENTE'
     ).length;
   }
 
   get totalAutorizadas(): number {
     return this.solicitudes.filter(
-      s => s.estatus === 'AUTORIZADA'
+      solicitud => solicitud.estatus === 'AUTORIZADA'
     ).length;
   }
 
   get totalRechazadas(): number {
     return this.solicitudes.filter(
-      s => s.estatus === 'RECHAZADA'
+      solicitud => solicitud.estatus === 'RECHAZADA'
     ).length;
+  }
+
+  // ==========================================
+  // LABORATORIO SELECCIONADO
+  // ==========================================
+
+  get laboratorioSeleccionado(): LaboratorioOption | undefined {
+
+    return this.laboratoriosDisponibles.find(
+      laboratorio =>
+        laboratorio.id === Number(this.formulario.laboratorioId)
+    );
+  }
+
+  // ==========================================
+  // VALIDAR HORARIO
+  // ==========================================
+
+  get horarioValido(): boolean {
+
+    if (
+      !this.formulario.horaInicio ||
+      !this.formulario.horaFin
+    ) {
+      return false;
+    }
+
+    return this.formulario.horaFin > this.formulario.horaInicio;
   }
 
   // ==========================================
@@ -314,6 +641,7 @@ export class SolicitudListComponent implements OnInit {
         'No tienes permisos para registrar solicitudes.',
         'error'
       );
+
       return;
     }
 
@@ -321,11 +649,25 @@ export class SolicitudListComponent implements OnInit {
       return;
     }
 
-    if (this.cargandoLaboratorios) {
+    if (
+      this.cargandoLaboratorios ||
+      this.cargandoMaterias ||
+      (this.rol === 'DOCENTE' && this.cargandoCarreras)
+    ) {
       this.mostrarMensaje(
-        'Espera a que se carguen los laboratorios.',
+        'Espera a que se carguen las carreras, laboratorios y materias.',
         'error'
       );
+
+      return;
+    }
+
+    if (this.rol === 'DOCENTE' && this.carrerasDocente.length === 0) {
+      this.mostrarMensaje(
+        'No tienes carreras asignadas para registrar solicitudes.',
+        'error'
+      );
+
       return;
     }
 
@@ -334,37 +676,26 @@ export class SolicitudListComponent implements OnInit {
         'No hay laboratorios disponibles para solicitar.',
         'error'
       );
+
+      return;
+    }
+
+    if (this.materias.length === 0) {
+      this.mostrarMensaje(
+        'No hay materias disponibles para seleccionar.',
+        'error'
+      );
+
       return;
     }
 
     this.formulario = this.formularioVacio();
+
+    this.carreraSeleccionadaId = null;
+
     this.mostrarFormulario = true;
+
     this.mensaje = '';
-  }
-
-  // ==========================================
-  // LABORATORIO SELECCIONADO
-  // ==========================================
-
-  get laboratorioSeleccionado(): LaboratorioOption | undefined {
-
-    return this.laboratorios.find(
-      laboratorio =>
-        laboratorio.id === Number(this.formulario.laboratorioId)
-    );
-  }
-
-  // ==========================================
-  // VALIDAR HORARIO
-  // ==========================================
-
-  get horarioValido(): boolean {
-
-    if (!this.formulario.horaInicio || !this.formulario.horaFin) {
-      return false;
-    }
-
-    return this.formulario.horaFin > this.formulario.horaInicio;
   }
 
   // ==========================================
@@ -373,13 +704,41 @@ export class SolicitudListComponent implements OnInit {
 
   guardarSolicitud(): void {
 
-    if (this.guardando) {
+    if (this.guardando || !this.puedeCrear) {
       return;
     }
 
     const laboratorio = this.laboratorioSeleccionado;
 
+    // Validar selección de carrera del docente.
+    if (this.rol === 'DOCENTE') {
+
+      if (this.carreraSeleccionadaId === null) {
+        this.mostrarMensaje(
+          'Selecciona una carrera.',
+          'error'
+        );
+
+        return;
+      }
+
+      const carreraAsignada = this.carrerasDocente.some(
+        carrera => carrera.id === this.carreraSeleccionadaId
+      );
+
+      if (!carreraAsignada) {
+        this.mostrarMensaje(
+          'La carrera seleccionada no está asignada a tu usuario.',
+          'error'
+        );
+
+        return;
+      }
+    }
+
+    // Validar campos obligatorios.
     if (
+      !this.formulario.materiaId ||
       !this.formulario.laboratorioId ||
       !this.formulario.fecha ||
       !this.formulario.horaInicio ||
@@ -387,62 +746,143 @@ export class SolicitudListComponent implements OnInit {
       !this.formulario.numeroPersonas ||
       !this.formulario.motivo.trim()
     ) {
+
       this.mostrarMensaje(
         'Completa todos los campos obligatorios.',
         'error'
       );
+
       return;
     }
 
+    // Validar fecha.
     if (this.formulario.fecha < this.fechaMinima) {
+
       this.mostrarMensaje(
         'No puedes solicitar una fecha anterior a hoy.',
         'error'
       );
+
       return;
     }
 
+    // Validar horario.
     if (!this.horarioValido) {
+
       this.mostrarMensaje(
         'La hora de finalización debe ser posterior a la hora de inicio.',
         'error'
       );
+
       return;
     }
 
+    // Validar laboratorio.
     if (!laboratorio) {
+
       this.mostrarMensaje(
         'Selecciona un laboratorio válido.',
         'error'
       );
+
       return;
     }
 
+    // Validar materia.
+    const materia = this.materiasDisponibles.find(
+      item =>
+        item.id === Number(this.formulario.materiaId)
+    );
+
+    if (!materia) {
+
+      this.mostrarMensaje(
+        'Selecciona una materia válida para la carrera elegida.',
+        'error'
+      );
+
+      return;
+    }
+
+    // Validar que materia y laboratorio correspondan
+    // a la carrera seleccionada por el docente.
+    if (this.rol === 'DOCENTE') {
+
+      if (
+        Number(materia.carreraId) !== this.carreraSeleccionadaId
+      ) {
+        this.mostrarMensaje(
+          'La materia no pertenece a la carrera seleccionada.',
+          'error'
+        );
+
+        return;
+      }
+
+      if (
+        Number(laboratorio.carreraId) !== this.carreraSeleccionadaId
+      ) {
+        this.mostrarMensaje(
+          'El laboratorio no pertenece a la carrera seleccionada.',
+          'error'
+        );
+
+        return;
+      }
+    }
+
+    // Validar que materia y laboratorio pertenezcan
+    // a la misma carrera para todos los roles.
     if (
-      this.formulario.numeroPersonas < 1 ||
-      this.formulario.numeroPersonas > laboratorio.capacidad
+      Number(materia.carreraId) !== Number(laboratorio.carreraId)
     ) {
+      this.mostrarMensaje(
+        'La materia y el laboratorio deben pertenecer a la misma carrera.',
+        'error'
+      );
+
+      return;
+    }
+
+    // Validar capacidad.
+    const personas = Number(this.formulario.numeroPersonas);
+
+    if (
+      !Number.isInteger(personas) ||
+      personas < 1 ||
+      personas > laboratorio.capacidad
+    ) {
+
       this.mostrarMensaje(
         `La capacidad máxima de este laboratorio es de ${laboratorio.capacidad} personas.`,
         'error'
       );
+
       return;
     }
 
-    this.guardando = true;
-
+    // Construir petición.
     const request: SolicitudRequest = {
+
+      materiaId: Number(this.formulario.materiaId),
+
       laboratorioId: Number(this.formulario.laboratorioId),
+
       fecha: this.formulario.fecha,
+
       horaInicio: this.formulario.horaInicio,
+
       horaFin: this.formulario.horaFin,
-      numeroPersonas: Number(this.formulario.numeroPersonas),
+
+      numeroPersonas: personas,
+
       motivo: this.formulario.motivo.trim()
     };
 
+    this.guardando = true;
+
     this.solicitudService.crear(request)
       .pipe(
-        switchMap(() => this.solicitudService.listar()),
         timeout({ first: 15000 }),
         finalize(() => {
           this.guardando = false;
@@ -451,18 +891,12 @@ export class SolicitudListComponent implements OnInit {
       )
       .subscribe({
 
-        next: (data) => {
+        next: () => {
 
-          if (!Array.isArray(data)) {
-            this.mostrarMensaje(
-              'No se pudo actualizar el listado.',
-              'error'
-            );
-            return;
-          }
-
-          this.solicitudes = [...data];
           this.formulario = this.formularioVacio();
+
+          this.carreraSeleccionadaId = null;
+
           this.mostrarFormulario = false;
 
           this.mostrarMensaje(
@@ -470,10 +904,10 @@ export class SolicitudListComponent implements OnInit {
             'success'
           );
 
-          this.cdr.detectChanges();
+          this.listarSolicitudes();
         },
 
-        error: (error) => {
+        error: error => {
 
           console.error(
             'Error al registrar solicitud:',
@@ -481,8 +915,10 @@ export class SolicitudListComponent implements OnInit {
           );
 
           this.mostrarMensaje(
-            error.error?.message ||
-            'No fue posible registrar la solicitud.',
+            this.obtenerMensajeError(
+              error,
+              'No fue posible registrar la solicitud.'
+            ),
             'error'
           );
         }
@@ -493,21 +929,24 @@ export class SolicitudListComponent implements OnInit {
   // AUTORIZAR SOLICITUD
   // ==========================================
 
-  autorizarSolicitud(solicitud: SolicitudLaboratorio): void {
+  autorizarSolicitud(
+    solicitud: SolicitudLaboratorio
+  ): void {
 
     if (!this.puedeGestionar) {
       this.mostrarMensaje(
         'No tienes permisos para autorizar solicitudes.',
         'error'
       );
+
       return;
     }
 
-    if (solicitud.estatus !== 'PENDIENTE') {
-      return;
-    }
-
-    if (this.procesandoId !== null || this.guardando) {
+    if (
+      solicitud.estatus !== 'PENDIENTE' ||
+      this.procesandoId !== null ||
+      this.guardando
+    ) {
       return;
     }
 
@@ -526,7 +965,6 @@ export class SolicitudListComponent implements OnInit {
 
     this.solicitudService.autorizar(solicitud.id)
       .pipe(
-        switchMap(() => this.solicitudService.listar()),
         timeout({ first: 15000 }),
         finalize(() => {
           this.procesandoId = null;
@@ -535,17 +973,17 @@ export class SolicitudListComponent implements OnInit {
       )
       .subscribe({
 
-        next: (data) => {
-
-          this.solicitudes = [...data];
+        next: () => {
 
           this.mostrarMensaje(
             'Solicitud autorizada correctamente.',
             'success'
           );
+
+          this.listarSolicitudes();
         },
 
-        error: (error) => {
+        error: error => {
 
           console.error(
             'Error al autorizar solicitud:',
@@ -553,8 +991,10 @@ export class SolicitudListComponent implements OnInit {
           );
 
           this.mostrarMensaje(
-            error.error?.message ||
-            'No fue posible autorizar la solicitud. Verifica la disponibilidad del laboratorio.',
+            this.obtenerMensajeError(
+              error,
+              'No fue posible autorizar la solicitud.'
+            ),
             'error'
           );
         }
@@ -565,7 +1005,9 @@ export class SolicitudListComponent implements OnInit {
   // ABRIR RECHAZO
   // ==========================================
 
-  abrirRechazo(solicitud: SolicitudLaboratorio): void {
+  abrirRechazo(
+    solicitud: SolicitudLaboratorio
+  ): void {
 
     if (!this.puedeGestionar) {
       return;
@@ -576,7 +1018,9 @@ export class SolicitudListComponent implements OnInit {
     }
 
     this.solicitudSeleccionada = solicitud;
+
     this.observacionesRechazo = '';
+
     this.mostrarRechazo = true;
   }
 
@@ -587,6 +1031,7 @@ export class SolicitudListComponent implements OnInit {
   rechazarSolicitud(): void {
 
     if (
+      !this.puedeGestionar ||
       !this.solicitudSeleccionada ||
       this.procesandoId !== null
     ) {
@@ -594,10 +1039,12 @@ export class SolicitudListComponent implements OnInit {
     }
 
     if (!this.observacionesRechazo.trim()) {
+
       this.mostrarMensaje(
         'Debes indicar el motivo del rechazo.',
         'error'
       );
+
       return;
     }
 
@@ -608,48 +1055,51 @@ export class SolicitudListComponent implements OnInit {
     this.solicitudService.rechazar(id, {
       observaciones: this.observacionesRechazo.trim()
     })
-      .pipe(
-        switchMap(() => this.solicitudService.listar()),
-        timeout({ first: 15000 }),
-        finalize(() => {
-          this.procesandoId = null;
-          this.cdr.detectChanges();
-        })
-      )
-      .subscribe({
+    .pipe(
+      timeout({ first: 15000 }),
+      finalize(() => {
+        this.procesandoId = null;
+        this.cdr.detectChanges();
+      })
+    )
+    .subscribe({
 
-        next: (data) => {
+      next: () => {
 
-          this.solicitudes = [...data];
+        this.mostrarRechazo = false;
 
-          this.mostrarRechazo = false;
-          this.solicitudSeleccionada = null;
-          this.observacionesRechazo = '';
+        this.solicitudSeleccionada = null;
 
-          this.mostrarMensaje(
-            'Solicitud rechazada correctamente.',
-            'success'
-          );
-        },
+        this.observacionesRechazo = '';
 
-        error: (error) => {
+        this.mostrarMensaje(
+          'Solicitud rechazada correctamente.',
+          'success'
+        );
 
-          console.error(
-            'Error al rechazar solicitud:',
-            error
-          );
+        this.listarSolicitudes();
+      },
 
-          this.mostrarMensaje(
-            error.error?.message ||
-            'No fue posible rechazar la solicitud.',
-            'error'
-          );
-        }
-      });
+      error: error => {
+
+        console.error(
+          'Error al rechazar solicitud:',
+          error
+        );
+
+        this.mostrarMensaje(
+          this.obtenerMensajeError(
+            error,
+            'No fue posible rechazar la solicitud.'
+          ),
+          'error'
+        );
+      }
+    });
   }
 
   // ==========================================
-  // CERRAR FORMULARIOS
+  // CANCELAR FORMULARIO
   // ==========================================
 
   cancelarFormulario(): void {
@@ -659,7 +1109,10 @@ export class SolicitudListComponent implements OnInit {
     }
 
     this.mostrarFormulario = false;
+
     this.formulario = this.formularioVacio();
+
+    this.carreraSeleccionadaId = null;
   }
 
   cancelarRechazo(): void {
@@ -669,7 +1122,9 @@ export class SolicitudListComponent implements OnInit {
     }
 
     this.mostrarRechazo = false;
+
     this.solicitudSeleccionada = null;
+
     this.observacionesRechazo = '';
   }
 
@@ -677,19 +1132,64 @@ export class SolicitudListComponent implements OnInit {
   // NOMBRE DEL ESTATUS
   // ==========================================
 
-  nombreEstatus(estatus: EstatusSolicitud): string {
+  nombreEstatus(
+    estatus: EstatusSolicitud | string | null | undefined
+  ): string {
 
     const nombres: Record<EstatusSolicitud, string> = {
+
       PENDIENTE: 'Pendiente',
+
       AUTORIZADA: 'Autorizada',
+
       RECHAZADA: 'Rechazada'
     };
 
-    return nombres[estatus];
+    return nombres[this.normalizarEstado(estatus)];
   }
 
   // ==========================================
-  // MENSAJES
+  // MENSAJES DE ERROR
+  // ==========================================
+
+  private obtenerMensajeError(
+    error: any,
+    mensajeDefecto: string
+  ): string {
+
+    if (
+      typeof error?.error === 'string' &&
+      error.error.trim()
+    ) {
+      return error.error;
+    }
+
+    if (error?.error?.mensaje) {
+      return error.error.mensaje;
+    }
+
+    if (error?.error?.message) {
+      return error.error.message;
+    }
+
+    if (error?.error?.detail) {
+      return error.error.detail;
+    }
+
+    if (error?.status === 403) {
+      return 'No tienes permisos para realizar esta operación.';
+    }
+
+    if (error?.status === 400) {
+      return error?.error?.mensaje ??
+        'La solicitud contiene datos inválidos. Revisa los campos obligatorios.';
+    }
+
+    return mensajeDefecto;
+  }
+
+  // ==========================================
+  // MOSTRAR MENSAJE
   // ==========================================
 
   mostrarMensaje(
@@ -698,6 +1198,7 @@ export class SolicitudListComponent implements OnInit {
   ): void {
 
     this.mensaje = mensaje;
+
     this.tipoMensaje = tipo;
 
     this.cdr.detectChanges();

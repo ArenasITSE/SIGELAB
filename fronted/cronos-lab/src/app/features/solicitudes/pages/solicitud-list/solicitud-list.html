@@ -116,6 +116,90 @@
 
         <div class="form-grid">
 
+          <!-- CARRERA: SOLO DOCENTES -->
+          @if (rol === 'DOCENTE') {
+            <div class="form-group full-width">
+              <label>Carrera *</label>
+
+              <select
+                name="carreraSeleccionadaId"
+                [(ngModel)]="carreraSeleccionadaId"
+                (ngModelChange)="cambiarCarrera($event)"
+                required
+                [disabled]="cargandoCarreras || guardando">
+
+                <option [ngValue]="null" disabled>
+                  {{
+                    cargandoCarreras
+                      ? 'Cargando carreras...'
+                      : 'Selecciona una carrera'
+                  }}
+                </option>
+
+                @for (carrera of carrerasDocente; track carrera.id) {
+                  <option [ngValue]="carrera.id">
+                    {{ carrera.nombre }}
+                  </option>
+                }
+              </select>
+
+              @if (cargandoCarreras) {
+                <small>
+                  <i class="fas fa-spinner fa-spin"></i>
+                  Consultando tus carreras asignadas...
+                </small>
+              }
+
+              @if (!cargandoCarreras && carrerasDocente.length === 0) {
+                <small class="error-help">
+                  No tienes carreras asignadas. Contacta al administrador.
+                </small>
+              }
+            </div>
+          }
+
+          <!-- MATERIA -->
+          <div class="form-group full-width">
+            <label>Materia *</label>
+
+            <select
+              name="materiaId"
+              [(ngModel)]="formulario.materiaId"
+              required
+              [disabled]="
+                cargandoMaterias ||
+                guardando ||
+                (rol === 'DOCENTE' && carreraSeleccionadaId === null)
+              ">
+
+              <option [ngValue]="0" disabled>
+                {{
+                  cargandoMaterias
+                    ? 'Cargando materias...'
+                    : rol === 'DOCENTE' && carreraSeleccionadaId === null
+                      ? 'Primero selecciona una carrera'
+                      : 'Selecciona una materia'
+                }}
+              </option>
+
+              @for (materia of materiasDisponibles; track materia.id) {
+                <option [ngValue]="materia.id">
+                  {{ materia.nombre }}
+                </option>
+              }
+            </select>
+
+            @if (!cargandoMaterias && materiasDisponibles.length === 0) {
+              <small class="error-help">
+                {{
+                  rol === 'DOCENTE' && carreraSeleccionadaId === null
+                    ? 'Selecciona una carrera para consultar sus materias.'
+                    : 'No hay materias disponibles para la carrera seleccionada.'
+                }}
+              </small>
+            }
+          </div>
+
           <!-- LABORATORIO -->
           <div class="form-group full-width">
             <label>Laboratorio *</label>
@@ -124,28 +208,40 @@
               name="laboratorioId"
               [(ngModel)]="formulario.laboratorioId"
               required
-              [disabled]="cargandoLaboratorios || guardando">
+              [disabled]="
+                cargandoLaboratorios ||
+                guardando ||
+                (rol === 'DOCENTE' && carreraSeleccionadaId === null)
+              ">
 
               <option [ngValue]="0" disabled>
                 {{
                   cargandoLaboratorios
                     ? 'Cargando laboratorios...'
-                    : 'Selecciona un laboratorio'
+                    : rol === 'DOCENTE' && carreraSeleccionadaId === null
+                      ? 'Primero selecciona una carrera'
+                      : 'Selecciona un laboratorio'
                 }}
               </option>
 
-              @for (
-                laboratorio of laboratorios;
-                track laboratorio.id
-              ) {
+              @for (laboratorio of laboratoriosDisponibles; track laboratorio.id) {
                 <option [ngValue]="laboratorio.id">
                   {{ laboratorio.nombre }}
                   — {{ laboratorio.carrera }}
                   — Capacidad: {{ laboratorio.capacidad }}
                 </option>
               }
-
             </select>
+
+            @if (!cargandoLaboratorios && laboratoriosDisponibles.length === 0) {
+              <small class="error-help">
+                {{
+                  rol === 'DOCENTE' && carreraSeleccionadaId === null
+                    ? 'Selecciona una carrera para consultar sus laboratorios.'
+                    : 'No hay laboratorios disponibles para la carrera seleccionada.'
+                }}
+              </small>
+            }
 
             @if (laboratorioSeleccionado) {
               <small>
@@ -231,7 +327,7 @@
               [(ngModel)]="formulario.motivo"
               placeholder="Describe la actividad académica que realizarás..."
               rows="4"
-              maxlength="1000"
+              maxlength="500"
               required
               [disabled]="guardando">
             </textarea>
@@ -261,7 +357,9 @@
               guardando ||
               !solicitudForm.valid ||
               !horarioValido ||
-              !formulario.laboratorioId
+              !formulario.materiaId ||
+              !formulario.laboratorioId ||
+              (rol === 'DOCENTE' && carreraSeleccionadaId === null)
             ">
 
             @if (guardando) {
@@ -297,7 +395,8 @@
         <button
           type="button"
           class="close-form"
-          (click)="cancelarRechazo()">
+          (click)="cancelarRechazo()"
+          [disabled]="procesandoId !== null">
           &times;
         </button>
       </div>
@@ -320,9 +419,11 @@
 
           <textarea
             [(ngModel)]="observacionesRechazo"
+            [ngModelOptions]="{ standalone: true }"
             placeholder="Explica por qué se rechaza la solicitud..."
             rows="4"
-            maxlength="1000">
+            maxlength="1000"
+            [disabled]="procesandoId !== null">
           </textarea>
         </div>
 

@@ -412,41 +412,92 @@
           </div>
 
           <!-- CARRERA -->
-          <div class="form-group">
-            <label>Carrera *</label>
+      <!-- CARRERAS -->
+<div class="form-group">
 
-            <select
-              name="carreraId"
-              [(ngModel)]="formulario.carreraId"
-              required
-              [disabled]="cargandoCarreras || guardando">
 
-              <option [ngValue]="null" disabled>
-                {{
-                  cargandoCarreras
-                    ? 'Cargando carreras...'
-                    : 'Selecciona una carrera'
-                }}
-              </option>
+@if (formulario.rol === 'DOCENTE') {
+  <div class="form-group">
+    <label>Carreras asignadas *</label>
 
-              @for (carrera of carreras; track carrera.id) {
-                <option [ngValue]="carrera.id">
-                  {{ carrera.nombre }}
-                </option>
-              }
+    <details class="career-dropdown">
+      <summary>
+        <span>
+          {{
+            formulario.carreraIds?.length
+              ? formulario.carreraIds.length + ' carrera(s) seleccionada(s)'
+              : 'Selecciona las carreras'
+          }}
+        </span>
+        <span class="dropdown-arrow">▼</span>
+      </summary>
 
-            </select>
+      <div class="career-options">
+        @for (carrera of carreras; track carrera.id) {
+          <label class="career-option">
+            <input
+              type="checkbox"
+              [checked]="formulario.carreraIds?.includes(carrera.id) ?? false"
+              (change)="toggleCarrera(carrera.id, $any($event.target).checked)"
+              [disabled]="guardando || !carrera.activo">
 
-            <small>
-              Selecciona la carrera a la que pertenece el usuario.
-            </small>
+            <span>{{ carrera.nombre }}</span>
+          </label>
+        }
+      </div>
+    </details>
 
-            @if (!cargandoCarreras && carreras.length === 0) {
-              <small class="error-help">
-                No hay carreras disponibles.
-              </small>
-            }
-          </div>
+    <small>
+      Puedes seleccionar una o varias carreras para el docente.
+    </small>
+
+    <small class="selected-careers">
+      Carreras seleccionadas:
+      {{ formulario.carreraIds?.length ?? 0 }}
+    </small>
+  </div>
+
+
+
+  } @else {
+
+    <label>Carrera *</label>
+
+    <select
+      name="carreraId"
+      [(ngModel)]="formulario.carreraId"
+      required
+      [disabled]="cargandoCarreras || guardando">
+
+      <option [ngValue]="null" disabled>
+        {{
+          cargandoCarreras
+            ? 'Cargando carreras...'
+            : 'Selecciona una carrera'
+        }}
+      </option>
+
+      @for (carrera of carreras; track carrera.id) {
+        <option [ngValue]="carrera.id">
+          {{ carrera.nombre }}
+        </option>
+      }
+
+    </select>
+
+    <small>
+      Selecciona la carrera a la que pertenece el usuario.
+    </small>
+
+  }
+
+  @if (!cargandoCarreras && carreras.length === 0) {
+    <small class="error-help">
+      No hay carreras disponibles.
+    </small>
+  }
+
+</div>
 
         </div>
 
@@ -465,10 +516,14 @@
             type="submit"
             class="btn-primary"
             [disabled]="
-              guardando ||
-              !usuarioForm.valid ||
-              formulario.carreraId === null ||
-              cargandoCarreras
+             guardando ||
+!usuarioForm.valid ||
+cargandoCarreras ||
+(
+  formulario.rol === 'DOCENTE'
+    ? !formulario.carreraIds?.length
+    : formulario.carreraId === null
+)
             ">
 
             @if (guardando) {
@@ -576,11 +631,19 @@
                 <td>{{ usuario.correo }}</td>
 
                 <!-- CARRERA -->
-                <td>
-                  <span class="career-name">
-                    {{ usuario.carrera || 'Sin carrera asignada' }}
-                  </span>
-                </td>
+              <td>
+  <div class="career-list">
+    @if (usuario.carreras?.length) {
+      @for (carrera of usuario.carreras; track carrera) {
+        <span class="career-tag">{{ carrera }}</span>
+      }
+    } @else {
+      <span class="career-name">
+        {{ usuario.carrera || 'Sin carrera asignada' }}
+      </span>
+    }
+  </div>
+</td>
 
                 <!-- ROL -->
                 <td>

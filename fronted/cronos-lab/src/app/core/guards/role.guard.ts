@@ -16,13 +16,14 @@ export const roleGuard: CanActivateFn = (
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  // Compatibilidad con un rol o varios roles
+  // Permite validar un rol o varios roles
   const expectedRoles: string[] =
     route.data['roles'] ??
     (route.data['role'] ? [route.data['role']] : []);
 
   const currentRole = authService.obtenerRol();
 
+  // Validar acceso
   if (
     currentRole &&
     expectedRoles.length > 0 &&
@@ -31,5 +32,6 @@ export const roleGuard: CanActivateFn = (
     return true;
   }
 
+  // Si no tiene permisos, regresar al login
   return router.createUrlTree(['/']);
 };

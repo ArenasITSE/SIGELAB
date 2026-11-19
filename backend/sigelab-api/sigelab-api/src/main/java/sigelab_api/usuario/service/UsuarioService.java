@@ -1,11 +1,12 @@
 
 package sigelab_api.usuario.service;
 
-import org.springframework.web.multipart.MultipartFile;
-
 import sigelab_api.usuario.dto.UsuarioRequest;
 import sigelab_api.usuario.dto.UsuarioResponse;
 import sigelab_api.usuario.dto.ResultadoImportacion;
+import sigelab_api.usuario.dto.CarreraUsuarioResponse;
+
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -26,4 +27,6 @@ public interface UsuarioService {
     UsuarioResponse desactivar(Long id);
 
     ResultadoImportacion importarExcel(MultipartFile archivo);
+
+    List<CarreraUsuarioResponse> misCarreras();
 }
